@@ -115,7 +115,7 @@ idt_flush:
 section .tables
 align 0x1000
 global proc0_pdir
-global proc0_pdir_end
+global pg0
 proc0_pdir:
         ; The first 4MB will be ID mapped.
         dd 0x00102007

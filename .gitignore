@@ -1,0 +1,6 @@
+kernel-*
+kernel-*.iso
+*.o
+*.d
+isodir/
+cscope.out

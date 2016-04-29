@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <sys/stdio.h>
 #include <sys/string.h>
+#include <util/cmp.h>
 
 #define INT_DIGITS 19 /* Room for a 64 bit base-10 integer */
 
@@ -90,6 +91,8 @@ int vsnprintf(char *str, size_t size, const char *format, va_list args)
 			char *sarg;
                         bool zero_pad = false;
                         int min_len = 0;
+                        int len = 0;
+                        int pad = 0;
                         char c = format[++n];
                         while (isdigit(c))
                         {
@@ -119,10 +122,19 @@ int vsnprintf(char *str, size_t size, const char *format, va_list args)
 					break;
 				case 's':
 					sarg = va_arg(args, char *);
-					expanded_len = strlen(sarg);
-					memcpy(tmp, sarg, expanded_len > 255
-							   ? 255
-							   : expanded_len);
+                                        len = strlen(sarg);
+                                        expanded_len = (min_len == 0
+                                                ? len
+                                                : min_len);
+                                        pad = min_len - len;
+                                        if (pad > 0 && pad < 255)
+                                                memset(tmp, ' ', pad);
+                                        else
+                                                pad = 0;
+					memcpy(tmp+pad, sarg,
+                                                len > 255-pad
+                                                   ? 255-pad
+                                                   : len);
 					break;
 				default:
 					return -1;

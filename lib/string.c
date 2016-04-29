@@ -38,6 +38,24 @@ char *strncpy(char *dst, const char *from, size_t n)
 	return orig_dst;
 }
 
+char *strncat(char *dst, const char *from, size_t n)
+{
+        char *orig_dst = dst;
+        while (*dst && n > 0)
+        {
+                dst++;
+                n--;
+        }
+        while (n-- > 0)
+        {
+                *dst++ = *from++;
+        }
+        if (n > 0) {
+                *dst = '\0';
+        }
+        return orig_dst;
+}
+
 void *memset(void *s, int c, size_t n)
 {
 	void *orig_s = s;
@@ -60,3 +78,7 @@ void *memcpy(void *dest, const void *src, size_t n)
 	return (void *)orig_dst;
 }
 
+void bzero(void *s, size_t num)
+{
+        memset(s, 0, num);
+}

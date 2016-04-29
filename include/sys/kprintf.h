@@ -13,6 +13,6 @@ typedef enum {
 void kprintf(int pri, const char *fmt, ...);
 void kprintf_set_output_device(output_device_t *dev);
 
-#define debug(msg, ...) kprintf(PRI_DEBUG, msg, __VA_ARGS__)
+#define debug(msg, ...) kprintf(PRI_DEBUG, msg, ##__VA_ARGS__)
 
 #endif

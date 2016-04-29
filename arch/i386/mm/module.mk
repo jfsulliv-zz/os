@@ -4,7 +4,7 @@ sp              := $(sp).x
 dirstack_$(sp)  := $(d)
 d               := $(dir)
 
-SRCS_$(d)      := $(d)/page_alloc.c
+SRCS_$(d)      := $(d)/init.c $(d)/reserve.c
 
 d               := $(dirstack_$(sp))
 sp              := $(basename $(sp))

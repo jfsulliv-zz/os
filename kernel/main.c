@@ -2,27 +2,24 @@
 #include <machine/arch_init.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
+#include <mm/init.h>
+#include <sys/config.h>
 #include <sys/kprintf.h>
-#include <sys/size.h>
 
 int
 main(multiboot_info_t *mbd)
 {
-        arch_init(mbd); /* Get the hardware ready */
-
-        /* Set up our page frame allocator. */
-        kprintf(0, "%dMiB available (%dMiB low, %dMiB high)\n",
-                B_MiB(allmem_bytes_avail(&mem_limits)),
-                B_MiB(lowmem_bytes_avail(&mem_limits)),
-                B_MiB(highmem_bytes_avail(&mem_limits)));
+        /* Set up the hardware as needed. */
+        arch_init(mbd);
+        /* Set up our initial page mapping */
+        init_paging(&mem_limits);
+        /* Set up the page frame allocator */
         pfa_init(&mem_limits);
+        pfa_report(false);
 
-        pfa_alloc(0, 0);
-        pfa_alloc(0, 1);
-        pfa_alloc(0, 1);
-        pfa_alloc(0, 2);
-        pfa_alloc(0, 2);
-        pfa_alloc(0, 3);
+#ifdef CONF_DEBUG
+        pfa_test();
+#endif
 
         for (;;);
 }

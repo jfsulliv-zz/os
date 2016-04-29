@@ -7,8 +7,8 @@
 #include <machine/timer.h>
 #include <machine/pic.h>
 #include <machine/regs.h>
+#include <mm/init.h>
 #include <mm/paging.h>
-#include <mm/pfa.h>
 #include <sys/kprintf.h>
 #include <sys/panic.h>
 

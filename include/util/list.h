@@ -16,7 +16,6 @@ struct list_head {
         struct list_head *prev;
 };
 
-
 static inline void
 list_head_init(struct list_head *h)
 {
@@ -56,6 +55,18 @@ static inline bool
 list_empty(struct list_head *l)
 {
         return (l->prev == l->next);
+}
+
+static inline size_t
+list_size(struct list_head *l)
+{
+        struct list_head *h = l;
+        size_t n = 0;
+        while (l->next != h) {
+                n++;
+                l = l->next;
+        }
+        return n;
 }
 
 #define list_foreach(head, p) \
