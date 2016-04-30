@@ -82,11 +82,7 @@ pfa_init(memlimits_t *limits)
         pg_map_pages(pfa.tag_bits, tag_bits_npg, tag_bits_phys, KPAGE_TAB);
 
         for (i = 0; i < pages_npg; i++) {
-                /* Kernel and DMA pages get fixed mappings. */
-                if (i < limits->high_pfn)
-                        pfa.pages[i].vaddr = (void *)_va(i * PAGE_SIZE);
-                else
-                        pfa.pages[i].vaddr = NULL;
+                pfa.pages[i].vaddr = NULL;
                 list_head_init(&pfa.pages[i].list);
         }
         /* Also get some room for our tag map. */
