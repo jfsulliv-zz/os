@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <util/list.h>
 
+#define KERN_OFFS 0x00100000
 #define KERN_BASE 0xC0000000
 #define PAGE_SHIFT 12
 #define PD_SHIFT   22
@@ -36,5 +37,11 @@
 typedef struct {
         uint32_t ent;
 } pgent_t;
+
+static inline unsigned long
+pgent_paddr(pgent_t *ent)
+{
+        return (ent->ent & (~(PAGE_SIZE - 1)));
+}
 
 #endif

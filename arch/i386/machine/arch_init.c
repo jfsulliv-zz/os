@@ -15,7 +15,7 @@
 extern char kernel_end;
 unsigned long highstart_pfn, highend_pfn;
 
-memlimits_t mem_limits = { 0, 0, 0};
+memlimits_t mem_limits = { 0, 0, 0, 0, 0};
 
 void
 arch_init(multiboot_info_t *mbd)
@@ -50,7 +50,11 @@ arch_init(multiboot_info_t *mbd)
         start_pfn = PFN_UP(_pa(&kernel_end)); /* Next page after kernel */
         max_low_pfn = PFN_DOWN(1024 * mbd->mem_lower);
         max_pfn   = PFN_DOWN(1024 * mbd->mem_upper);
+        mem_limits.dma_pfn = 1;
+        mem_limits.dma_pfn_end  = (KERN_OFFS / PAGE_SIZE);
         mem_limits.low_pfn  = start_pfn;
+        bug_on(mem_limits.dma_pfn_end >= mem_limits.low_pfn,
+                        "DMA overflow");
         mem_limits.high_pfn = start_pfn + ((max_pfn - start_pfn) >> 2);
         mem_limits.max_pfn  = max_pfn;
 }

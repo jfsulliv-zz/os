@@ -1,6 +1,8 @@
 #ifndef _MM_PAGE_TABLE_H_
 #define _MM_PAGE_TABLE_H_
 
+typedef unsigned char pgflags_t;
+
 #define _PAGE_BIT_PRESENT       0
 #define _PAGE_BIT_RW            1
 #define _PAGE_BIT_USER          2

@@ -18,10 +18,10 @@ disable_reserve(void)
         reserve_enabled = false;
 }
 
-void *
+unsigned long
 reserve_low_pages(memlimits_t *lim, unsigned int num)
 {
-        void *ret;
+        unsigned long ret;
 
         bug_on(!lim, "NULL parameter");
         bug_on(num + lim->low_pfn >= lim->high_pfn,
@@ -29,16 +29,17 @@ reserve_low_pages(memlimits_t *lim, unsigned int num)
         bug_on(!can_reserve(), "Page reserved after PFA usage");
 
         if (num == 0)
-                return NULL;
-        ret = (void *)vaddr_of(lim->low_pfn);
+                return 0;
+
+        ret = paddr_of(lim->low_pfn);
         lim->low_pfn += num;
         return ret;
 }
 
-void *
+unsigned long
 reserve_high_pages(memlimits_t *lim, unsigned int num)
 {
-        void *ret;
+        unsigned long ret;
 
         bug_on(!lim, "NULL parameter");
         bug_on(num + lim->high_pfn >= lim->max_pfn,
@@ -46,8 +47,9 @@ reserve_high_pages(memlimits_t *lim, unsigned int num)
         bug_on(!can_reserve(), "Page reserved after PFA usage");
 
         if (num == 0)
-                return NULL;
-        ret = (void *)vaddr_of(lim->high_pfn);
+                return 0;
+
+        ret = paddr_of(lim->high_pfn);
         lim->high_pfn += num;
         return ret;
 }
