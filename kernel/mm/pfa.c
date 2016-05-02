@@ -20,7 +20,7 @@
 #include <util/cmp.h>
 #include <util/list.h>
 
-pfa_t pfa;
+pfa_t pfa = { .ready = false };
 
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long) - __builtin_clzl((X)) - 1))
 
@@ -172,6 +172,14 @@ pfa_init(memlimits_t *limits)
         /* Once we hit the buddy allocator, we may not do any early
          * page reserving. */
         disable_reserve();
+
+        pfa.ready = true;
+}
+
+bool
+pfa_ready(void)
+{
+        return pfa.ready;
 }
 
 /* TODO handle discontiguous allocation? */
@@ -184,6 +192,7 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
 
         bug_on((order >= PFA_MAX_PAGE_ORDER),
                "Invalid order for allocation.");
+        bug_on(!pfa.ready, "PFA used before initialization.");
 
         if (flags & M_DMA) {
                 zones = pfa.dma_zones;
@@ -234,6 +243,7 @@ find_buddy(page_t *page, unsigned int order)
 void
 pfa_free_pages(page_t *p, unsigned int order)
 {
+        bug_on(!pfa.ready, "PFA used before initialization.");
         bug_on(!p, "NULL parameter");
         bug_on(order >= PFA_MAX_PAGE_ORDER, "Page zone too big");
         bug_on(is_avail(p), "Page not allocated before freeing");

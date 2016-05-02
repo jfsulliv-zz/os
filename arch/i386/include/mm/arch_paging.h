@@ -20,6 +20,7 @@
 #define PAGE_SIZE 4096
 #define PTAB_SIZE (1 << PAGE_SHIFT)
 #define PDIR_SIZE (1 << PD_SHIFT)
+#define PGENT_ADDR(x)   (x & ~(PAGE_SIZE - 1))
 
 #define PFN_UP(x)       (((x) + PAGE_SIZE-1) >> PAGE_SHIFT)
 #define PFN_DOWN(x)     ((x) >> PAGE_SHIFT)
@@ -27,12 +28,11 @@
 #define _pa(x)  ((unsigned long)x-KERN_BASE)
 #define _va(x)  ((unsigned long)x+KERN_BASE)
 
-#define page_of(v)    ((void *)(_pa(x) >> PAGE_SHIFT))
 #define paddr_of(pfn) ((unsigned long)((pfn) << PAGE_SHIFT))
-#define vaddr_of(pfn) (_va(paddr_of(pfn)))
 
 #define PT_INDEX(x) (((unsigned long)(x) >> PAGE_SHIFT) & 0x03FF)
 #define PD_INDEX(x) (((unsigned long)(x) >> PD_SHIFT) & (PTABS_PER_PD - 1))
+
 
 typedef struct {
         uint32_t ent;

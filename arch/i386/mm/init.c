@@ -13,7 +13,7 @@ extern char kernel_end;
 static void
 init_pagetables(memlimits_t *lim)
 {
-        int i, j;
+        unsigned int i, j;
         unsigned long pg0_index;
         unsigned long vaddr;
         unsigned long tables_region, tables_region_end;
@@ -33,6 +33,12 @@ init_pagetables(memlimits_t *lim)
                 if (_pa(vaddr) >= lowmem_end(lim))
                         break;
                 tab->ents[j].ent = (_pa(vaddr) | KPAGE_TAB);
+        }
+
+        /* Set up the high page directory entries to be unmapped. */
+        for (i = 0; i < pg0_index; i++)
+        {
+                proc0_pdir.tabs[i].ent = _PAGE_PROTNONE;
         }
 
         /* Reserve enough physical memory to hold the rest of our page

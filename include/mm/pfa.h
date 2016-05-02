@@ -1,6 +1,7 @@
 #ifndef _MM_PFA_H_
 #define _MM_PFA_H_
 
+#include <stdbool.h>
 #include <mm/flags.h>
 #include <mm/paging.h>
 #include <util/list.h>
@@ -15,6 +16,7 @@ typedef struct {
         memlimits_t  *limits;
         page_t       *pages;
         unsigned long *tag_bits;
+        bool          ready;
         pfa_block_t   dma_zones[PFA_MAX_PAGE_ORDER];
         pfa_block_t   low_zones[PFA_MAX_PAGE_ORDER];
         pfa_block_t   high_zones[PFA_MAX_PAGE_ORDER];
@@ -38,6 +40,7 @@ phys_to_page(void *paddr)
 }
 
 void pfa_init(memlimits_t *limits);
+bool pfa_ready(void);
 void pfa_report(bool full);
 
 page_t *pfa_alloc_pages(mflags_t, unsigned int order);

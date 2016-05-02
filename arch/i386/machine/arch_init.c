@@ -20,7 +20,7 @@ memlimits_t mem_limits = { 0, 0, 0, 0, 0};
 void
 arch_init(multiboot_info_t *mbd)
 {
-        unsigned long start_pfn, max_pfn, max_low_pfn;
+        unsigned long start_pfn, max_pfn;
 
         /* Set up memory segmentation. */
         disable_interrupts();
@@ -48,7 +48,6 @@ arch_init(multiboot_info_t *mbd)
                 return; // TODO manual memory map detection
         }
         start_pfn = PFN_UP(_pa(&kernel_end)); /* Next page after kernel */
-        max_low_pfn = PFN_DOWN(1024 * mbd->mem_lower);
         max_pfn   = PFN_DOWN(1024 * mbd->mem_upper);
         mem_limits.dma_pfn = 1;
         mem_limits.dma_pfn_end  = (KERN_OFFS / PAGE_SIZE);
