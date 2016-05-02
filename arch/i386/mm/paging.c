@@ -39,11 +39,7 @@ pg_map (void *vaddr, unsigned long paddr, pgflags_t flags)
         pd_ind = PD_INDEX(vaddr);
         ent = &page_directory->tabs[pd_ind];
         if (ent->ent & _PAGE_PROTNONE) {
-                /* That's a miss. Let's set up a new table */
-                page_t *new_pg = pfa_alloc(PFA_LOWMEM, 0);
-                if (!new_pg)
-                        return -1; /* TODO ENOMEM */
-                ent->ent = (phys_addr(pfa_base(), new_pg) | KPAGE_TAB);
+                ent->ent |= KPAGE_TAB;
         }
         tab = (pgtab_t *)&page_tables[pd_ind];
         pg_tab_map(tab, vaddr, paddr, flags);
@@ -78,7 +74,7 @@ int pg_map_pages(void *vaddr, size_t npg, unsigned long paddr,
         size_t i;
         for (i = 0; i < npg; i++)
         {
-                int r = pg_map((unsigned long *)vaddr + (i * PAGE_SIZE),
+                int r = pg_map((unsigned char *)vaddr + (i * PAGE_SIZE),
                        paddr + (i * PAGE_SIZE), flags);
                 if (r)
                         return r;

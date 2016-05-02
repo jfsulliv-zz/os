@@ -31,7 +31,7 @@
 #define paddr_of(pfn) ((unsigned long)((pfn) << PAGE_SHIFT))
 #define vaddr_of(pfn) (_va(paddr_of(pfn)))
 
-#define PT_INDEX(x) ((unsigned long)(x) >> PAGE_SHIFT & 0x03FF)
+#define PT_INDEX(x) (((unsigned long)(x) >> PAGE_SHIFT) & 0x03FF)
 #define PD_INDEX(x) (((unsigned long)(x) >> PD_SHIFT) & (PTABS_PER_PD - 1))
 
 typedef struct {

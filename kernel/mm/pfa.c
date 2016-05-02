@@ -8,6 +8,7 @@
  */
 
 #include <asm/bitops.h>
+#include <mm/flags.h>
 #include <mm/reserve.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
@@ -73,19 +74,20 @@ pfa_init(memlimits_t *limits)
         pages_npg = ((PAGE_SIZE - 1 + pages_sz) / PAGE_SIZE);
         pages_phys = reserve_low_pages(limits, pages_npg);
         pfa.pages = (page_t *)_va(pages_phys);
-        pg_map_pages(pfa.pages, pages_npg, pages_phys, KPAGE_TAB);
+        bug_on(pg_map_pages(pfa.pages, pages_npg, pages_phys, KPAGE_TAB),
+                "Failed to map pagelist to virtual address.");
 
         /* Do the same for our tag bits. */
         tag_bits_npg = ((PAGE_SIZE - 1 + (all_pages >> 3)) / PAGE_SIZE);
         tag_bits_phys = reserve_low_pages(limits, tag_bits_npg);
         pfa.tag_bits = (unsigned long *)_va(tag_bits_phys);
-        pg_map_pages(pfa.tag_bits, tag_bits_npg, tag_bits_phys, KPAGE_TAB);
+        bug_on(pg_map_pages(pfa.tag_bits, tag_bits_npg, tag_bits_phys,
+               KPAGE_TAB), "Failed to map tag bits to virtual address.");
 
         for (i = 0; i < pages_npg; i++) {
                 pfa.pages[i].vaddr = NULL;
                 list_head_init(&pfa.pages[i].list);
         }
-        /* Also get some room for our tag map. */
         bzero(pfa.tag_bits, (all_pages >> 3));
 
         /* Initialize the free page lists */
@@ -172,10 +174,9 @@ pfa_init(memlimits_t *limits)
         disable_reserve();
 }
 
-/* TODO: Improve this. */
+/* TODO handle discontiguous allocation? */
 page_t *
-pfa_alloc_pages(pfa_alloc_type_t type, pfa_alloc_flags_t flags,
-                unsigned int order)
+pfa_alloc_pages(mflags_t flags, unsigned int order)
 {
         unsigned int i;
         page_t *page;
@@ -184,22 +185,12 @@ pfa_alloc_pages(pfa_alloc_type_t type, pfa_alloc_flags_t flags,
         bug_on((order >= PFA_MAX_PAGE_ORDER),
                "Invalid order for allocation.");
 
-        bug_on(flags & PFA_FLAGS_CONTIG, "TODO: contig alloc");
-
-        switch (type)
-        {
-                case PFA_DMA:
-                        zones = pfa.dma_zones;
-                        break;
-                case PFA_LOWMEM:
-                        zones = pfa.low_zones;
-                        break;
-                case PFA_HIGHMEM:
-                        zones = pfa.high_zones;
-                        break;
-                case INVAL:
-                default:
-                        return NULL;
+        if (flags & M_DMA) {
+                zones = pfa.dma_zones;
+        } else if (flags & M_HIGH) {
+                zones = pfa.high_zones;
+        } else {
+                zones = pfa.low_zones;
         }
 
         for (i = order; i < PFA_MAX_PAGE_ORDER; i++)
@@ -214,8 +205,7 @@ pfa_alloc_pages(pfa_alloc_type_t type, pfa_alloc_flags_t flags,
                 /* Trim if needed. */
                 while (i > order)
                 {
-                        i--;
-                        page_t *buddy = (page_t *)(page + (1UL << i));
+                        i--; page_t *buddy = (page_t *)(page + (1UL << i));
                         buddy->order = i;
                         mark_avail(buddy);
                         list_add(&zones[i].list, &buddy->list);
@@ -241,7 +231,6 @@ find_buddy(page_t *page, unsigned int order)
         return (page_t *)((unsigned long)pfa.pages + _buddy);
 }
 
-/* TODO: Actually write this. */
 void
 pfa_free_pages(page_t *p, unsigned int order)
 {
@@ -327,17 +316,17 @@ pfa_test(void)
 #ifdef CONF_DEBUG
         /* First, ensure that each type of alloc stays in its region. */
         page_t *p;
-        p = pfa_alloc(PFA_DMA, 0);
+        p = pfa_alloc(M_DMA);
         bug_on((phys_addr(pfa.pages, p) < dma_start(pfa.limits))
                 || (phys_addr(pfa.pages, p) >= dma_end(pfa.limits)),
                 "DMA alloc out of range");
         pfa_free(p);
-        p = pfa_alloc(PFA_LOWMEM, 0);
+        p = pfa_alloc(M_KERNEL);
         bug_on((phys_addr(pfa.pages, p) < lowmem_start(pfa.limits))
                 || (phys_addr(pfa.pages, p) >= lowmem_end(pfa.limits)),
                 "Low alloc out of range");
         pfa_free(p);
-        p = pfa_alloc(PFA_HIGHMEM, 0);
+        p = pfa_alloc(M_HIGH);
         bug_on((phys_addr(pfa.pages, p) < highmem_start(pfa.limits))
                 || (phys_addr(pfa.pages, p) >= highmem_end(pfa.limits)),
                 "High alloc out of range");
