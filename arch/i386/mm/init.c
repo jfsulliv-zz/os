@@ -24,13 +24,13 @@ init_pagetables(memlimits_t *lim)
          * tables. */
         pg0_index = PD_INDEX(_va(lowmem_start(lim)));
         vaddr = pg0_index * PDIR_SIZE;
-        bug_on(_pa(vaddr) >= lowmem_end(lim),
+        bug_on(_pa(vaddr) >= lowmem_top(lim),
               "End of kernel exceeds bytes available.");
         tab = &pg0;
         for (j = 0; j < PAGES_PER_PT; j++)
         {
                 vaddr = (pg0_index * PDIR_SIZE) + (j * PAGE_SIZE);
-                if (_pa(vaddr) >= lowmem_end(lim))
+                if (_pa(vaddr) >= lowmem_top(lim))
                         break;
                 tab->ents[j].ent = (_pa(vaddr) | KPAGE_TAB);
         }
@@ -56,7 +56,7 @@ init_pagetables(memlimits_t *lim)
                 unsigned long vaddr = i * PDIR_SIZE;
                 unsigned long tab_paddr;
 
-                if (_pa(vaddr) >= lowmem_end(lim))
+                if (_pa(vaddr) >= lowmem_top(lim))
                         break;
 
                 tab_paddr = tables_region + ((i - (pg0_index + 1))

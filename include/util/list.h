@@ -16,6 +16,8 @@ struct list_head {
         struct list_head *prev;
 };
 
+#define LIST_HEAD(h) struct list_head (h) = {&(h), &(h)}
+
 static inline void
 list_head_init(struct list_head *h)
 {

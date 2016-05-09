@@ -53,13 +53,13 @@ mem_max(memlimits_t *lim)
 static inline unsigned long
 dma_start(memlimits_t *lim)
 {
-        return (lim->dma_pfn * PAGE_SIZE);
+        return (lim->dma_pfn);
 }
 
 static inline unsigned long
 dma_end(memlimits_t *lim)
 {
-        return (lim->dma_pfn_end * PAGE_SIZE);
+        return (lim->dma_pfn_end);
 }
 
 static inline unsigned long
@@ -77,13 +77,13 @@ dma_bytes_avail(memlimits_t *lim)
 static inline unsigned long
 lowmem_start(memlimits_t *lim)
 {
-        return (lim->low_pfn * PAGE_SIZE);
+        return (lim->low_pfn);
 }
 
 static inline unsigned long
 lowmem_end(memlimits_t *lim)
 {
-        return (lim->high_pfn * PAGE_SIZE);
+        return (lim->high_pfn);
 }
 
 static inline unsigned long
@@ -101,13 +101,13 @@ lowmem_bytes_avail(memlimits_t *lim)
 static inline unsigned long
 highmem_start(memlimits_t *lim)
 {
-        return (lim->high_pfn * PAGE_SIZE);
+        return (lim->high_pfn);
 }
 
 static inline unsigned long
 highmem_end(memlimits_t *lim)
 {
-        return (lim->max_pfn * PAGE_SIZE);
+        return (lim->max_pfn);
 }
 
 static inline unsigned long
@@ -182,6 +182,12 @@ static inline bool
 is_lowmem(memlimits_t *lim, unsigned long paddr)
 {
         return (lowmem_base(lim) <= paddr && lowmem_top(lim) >= paddr);
+}
+
+static inline bool
+is_highmem(memlimits_t *lim, unsigned long paddr)
+{
+        return (highmem_base(lim) <= paddr && highmem_top(lim) >= paddr);
 }
 
 extern memlimits_t mem_limits;

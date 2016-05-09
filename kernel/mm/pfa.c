@@ -19,10 +19,9 @@
 #include <sys/panic.h>
 #include <util/cmp.h>
 #include <util/list.h>
+#include <util/math.h>
 
 pfa_t pfa = { .ready = false };
-
-#define LOG2(X) ((unsigned) (8*sizeof (unsigned long) - __builtin_clzl((X)) - 1))
 
 static inline unsigned int
 order_of(unsigned long num_pages)
@@ -61,14 +60,16 @@ pfa_init(memlimits_t *limits)
         unsigned long dma_pages;
         unsigned long low_pages;
         unsigned long high_pages;
-        unsigned long all_pages  = allmem_pages_avail(limits);
-        unsigned long pages_sz = (all_pages * sizeof(page_t));
+        unsigned long all_pages;
+        unsigned long pages_sz;
         unsigned long i;
 
 
         bug_on(!limits, "NULL limits");
-
         pfa.limits = limits;
+
+        all_pages  = limits->max_pfn;
+        pages_sz = (all_pages * sizeof(page_t));
 
         /* First of all, get some room for our global page list. */
         pages_npg = ((PAGE_SIZE - 1 + pages_sz) / PAGE_SIZE);
@@ -84,9 +85,9 @@ pfa_init(memlimits_t *limits)
         bug_on(pg_map_pages(pfa.tag_bits, tag_bits_npg, tag_bits_phys,
                KPAGE_TAB), "Failed to map tag bits to virtual address.");
 
-        for (i = 0; i < pages_npg; i++) {
-                pfa.pages[i].vaddr = NULL;
+        for (i = 0; i < all_pages; i++) {
                 list_head_init(&pfa.pages[i].list);
+                pfa.pages[i].vaddr = NULL;
         }
         bzero(pfa.tag_bits, (all_pages >> 3));
 
@@ -104,69 +105,79 @@ pfa_init(memlimits_t *limits)
 
         /* Populate the free zone lists */
         unsigned long ind = limits->dma_pfn;
-        while (ind < dma_pages)
+        i = 0;
+        while (i < dma_pages)
         {
                 unsigned long next_block_size, ord;
-                if (dma_pages - ind == 1) {
+                if (dma_pages - i == 1) {
                         next_block_size = 1;
                 } else {
                         next_block_size = MIN(1 << (PFA_MAX_PAGE_ORDER-1),
-                                              (dma_pages - ind) >> 1);
+                                              (dma_pages - i) >> 1);
                 }
                 ord = order_of(next_block_size);
 
                 bug_on(next_block_size == 0, "Infinite loop");
-                bug_on(ind >= dma_pages, "Exceeding dma page bounds");
+                bug_on(ind >= dma_end(limits), "Exceeding dma page bounds");
                 bug_on(ord >= PFA_MAX_PAGE_ORDER, "Invalid zone order");
 
                 page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
+                pg->vaddr = (void *)_va(ind * PAGE_SIZE);
+                bug_on(_pa(pg->vaddr) < dma_base(limits), "oops");
                 list_add(&pfa.dma_zones[ord].list, &pg->list);
 
                 ind += next_block_size;
+                i += next_block_size;
         }
-        ind = 0;
-        while (ind < low_pages)
+        ind = limits->low_pfn;
+        while (i < low_pages)
         {
                 unsigned long next_block_size, ord;
-                if (low_pages - ind == 1) {
+                if (low_pages - i == 1) {
                         next_block_size = 1;
                 } else {
                         next_block_size = MIN(1 << (PFA_MAX_PAGE_ORDER-1),
-                                              (low_pages - ind) >> 1);
+                                              (low_pages - i) >> 1);
                 }
                 ord = order_of(next_block_size);
 
                 bug_on(next_block_size == 0, "Infinite loop");
-                bug_on(ind >= low_pages, "Exceeding low page bounds");
+                bug_on(ind >= lowmem_end(limits), "Exceeding low page bounds");
                 bug_on(ord >= PFA_MAX_PAGE_ORDER, "Invalid zone order");
 
-                page_t *pg = &pfa.pages[ind + limits->low_pfn];
+                page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
+                pg->vaddr = (void *)_va(ind * PAGE_SIZE);
+                bug_on(_pa(pg->vaddr) < lowmem_base(limits), "oops");
                 list_add(&pfa.low_zones[ord].list, &pg->list);
 
                 ind += next_block_size;
+                i += next_block_size;
         }
-        while (ind < high_pages)
+        ind = limits->high_pfn;
+        while (i < high_pages)
         {
                 unsigned long next_block_size, ord;
-                if (high_pages - ind == 1) {
+                if (high_pages - i == 1) {
                         next_block_size = 1;
                 } else {
                         next_block_size = MIN(1 << (PFA_MAX_PAGE_ORDER-1),
-                                              (high_pages - ind) >> 1);
+                                              (high_pages - i) >> 1);
                 }
                 ord = order_of(next_block_size);
 
                 bug_on(next_block_size == 0, "Infinite loop");
-                bug_on(ind >= high_pages, "Exceeding high page bounds");
+                bug_on(ind >= highmem_end(limits), "Exceeding high page bounds");
                 bug_on(ord >= PFA_MAX_PAGE_ORDER, "Invalid zone order");
 
-                page_t *pg = &pfa.pages[ind + limits->high_pfn];
+                page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
+                pg->vaddr = NULL;
                 list_add(&pfa.high_zones[ord].list, &pg->list);
 
                 ind += next_block_size;
+                i += next_block_size;
         }
 
         /* Once we hit the buddy allocator, we may not do any early
@@ -193,6 +204,9 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
         bug_on((order >= PFA_MAX_PAGE_ORDER),
                "Invalid order for allocation.");
         bug_on(!pfa.ready, "PFA used before initialization.");
+
+        if (BAD_MFLAGS(flags))
+                return NULL;
 
         if (flags & M_DMA) {
                 zones = pfa.dma_zones;
@@ -327,20 +341,24 @@ pfa_test(void)
         /* First, ensure that each type of alloc stays in its region. */
         page_t *p;
         p = pfa_alloc(M_DMA);
-        bug_on((phys_addr(pfa.pages, p) < dma_start(pfa.limits))
-                || (phys_addr(pfa.pages, p) >= dma_end(pfa.limits)),
-                "DMA alloc out of range");
+        bug_on(!is_dma(pfa.limits, phys_addr(pfa.pages, p)),
+                        "DMA alloc out of range");
         pfa_free(p);
         p = pfa_alloc(M_KERNEL);
-        bug_on((phys_addr(pfa.pages, p) < lowmem_start(pfa.limits))
-                || (phys_addr(pfa.pages, p) >= lowmem_end(pfa.limits)),
-                "Low alloc out of range");
+        bug_on(!is_lowmem(pfa.limits, phys_addr(pfa.pages, p)),
+                        "Low alloc out of range");
         pfa_free(p);
         p = pfa_alloc(M_HIGH);
-        bug_on((phys_addr(pfa.pages, p) < highmem_start(pfa.limits))
-                || (phys_addr(pfa.pages, p) >= highmem_end(pfa.limits)),
-                "High alloc out of range");
+        bug_on(!is_highmem(pfa.limits, phys_addr(pfa.pages, p)),
+                        "High alloc out of range");
         pfa_free(p);
+
+        /* Now ensure that we get valid virtual addresses from
+         * allocations. */
+        char *foo = alloc_page(M_KERNEL);
+        bug_on(!foo, "alloc_page returned NULL");
+        bug_on(!is_lowmem(pfa.limits, _pa(foo)), "Out of bounds returned");
+        free_page(foo);
 
         kprintf(0, "pfa_test passed\n");
 #endif

@@ -2,10 +2,13 @@
 #define _MM_FLAGS_H_
 
 #include <stdint.h>
+#include <sys/bitops_generic.h>
 
 #define M_WAIT_BIT 0
 #define M_HIGH_BIT 1
 #define M_DMA_BIT  2
+#define MFLAGS_GOOD_MASK (GENMASK(3, 0))
+#define BAD_MFLAGS(f) ((f) & ~MFLAGS_GOOD_MASK)
 
 #define M_WAIT     (1 << M_WAIT_BIT)
 #define M_HIGH     (1 << M_HIGH_BIT)
