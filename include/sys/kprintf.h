@@ -7,10 +7,11 @@
 typedef enum {
         PRI_ALL = 0,
         PRI_DEBUG,
+        PRI_ERR,
         INV = -1,
 } kprintf_pri_t;
 
-void kprintf(int pri, const char *fmt, ...);
+void kprintf(kprintf_pri_t pri, const char *fmt, ...);
 void kprintf_set_output_device(output_device_t *dev);
 
 #define debug(msg, ...) kprintf(PRI_DEBUG, msg, ##__VA_ARGS__)

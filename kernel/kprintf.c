@@ -10,7 +10,7 @@ static output_device_t output_device = { NULL };
 
 
 void
-kprintf(int pri, const char *fmt, ...)
+kprintf(kprintf_pri_t pri, const char *fmt, ...)
 {
         va_list args;
         char tmp[4096];
