@@ -16,7 +16,8 @@ struct list_head {
         struct list_head *prev;
 };
 
-#define LIST_HEAD(h) struct list_head (h) = {&(h), &(h)}
+#define LIST_HEAD_INIT(h) {&(h), &(h)}
+#define LIST_HEAD(h) struct list_head (h) = LIST_HEAD_INIT(h)
 
 static inline void
 list_head_init(struct list_head *h)
@@ -96,29 +97,29 @@ list_size(struct list_head *l)
         (!list_empty(ptr) ? list_first_entry(ptr, type, member) : NULL)
 
 #define list_next_entry(pos, member) \
-        list_entry((pos)->member.next, typeof(*(pos)), member)
+        list_entry((pos)->member.next, __typeof__(*(pos)), member)
 
 #define list_prev_entry(pos, member) \
-        list_entry((pos)->member.prev, typeof(*(pos)), member)
+        list_entry((pos)->member.prev, __typeof__(*(pos)), member)
 
 #define list_foreach_entry(head, p, member) \
-        for (p = list_first_entry(head, typeof(*p), member);           \
+        for (p = list_first_entry(head, __typeof__(*p), member);       \
              &p->member != (head);                                     \
              p = list_next_entry(p, member))
 
 #define list_foreach_entry_prev(head, p, member) \
-        for (p = list_last_entry(head, typeof(*p), member);            \
+        for (p = list_last_entry(head, __typeof__(*p), member);        \
              &p->member != (head);                                     \
              p = list_prev_entry(p, member))
 
 #define list_foreach_entry_safe(head, p, s, member) \
-        for (p = list_first_entry(head, typeof(*p), member),           \
+        for (p = list_first_entry(head, __typeof__(*p), member),       \
                 s = list_next_entry(p, member);                        \
              &p->member != (head);                                     \
-             p = n, n = list_next_entry(n, member))
+             p = s, s = list_next_entry(s, member))
 
 #define list_foreach_entry_prev_safe(head, p, s, member) \
-        for (p = list_last_entry(head, typeof(*p), member),            \
+        for (p = list_last_entry(head, __typeof__(*p), member),        \
                 s = list_prev_entry(p, member);                        \
              &p->member != (head);                                     \
              p = n, n = list_prev_entry(n, member))
