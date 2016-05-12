@@ -56,3 +56,18 @@ get_regs(struct regs *to)
                   "r" (eip)
                 : "ecx", "esi", "edi");
 }
+
+void
+backtrace(unsigned int max_frames)
+{
+        unsigned int *ebp = &max_frames - 2;
+        unsigned int fr;
+        for (fr = 0; fr < max_frames; fr++)
+        {
+                unsigned int eip = ebp[1];
+                if (!eip)
+                        break;
+                ebp = (unsigned int *)(ebp[0]);
+                kprintf(0, "0x%08x\n", eip);
+        }
+}

@@ -1,5 +1,5 @@
-#ifndef __TIMER_H__
-#define __TIMER_H__
+#ifndef __MACHINE_TIMER_H__
+#define __MACHINE_TIMER_H__
 
 /*
  * machine/timer.h
@@ -34,4 +34,3 @@ void timer_phase(int hz);
 void timer_install(void);
 
 #endif
-

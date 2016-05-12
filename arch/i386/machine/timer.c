@@ -1,6 +1,5 @@
 #include <machine/irq.h>
 #include <machine/timer.h>
-#include <sys/kprintf.h>
 
 static volatile long timer_ticks = 0;
 static volatile long seconds = 0;
@@ -10,6 +9,18 @@ void timer_wait(int ms)
 {
         int end = (ms / 1000) + seconds;
         while (seconds < end);
+}
+
+long
+timer_get_ticks(void)
+{
+        return timer_ticks;
+}
+
+long
+timer_get_seconds(void)
+{
+        return seconds;
 }
 
 void timer_wait_ticks(int n)
@@ -27,7 +38,6 @@ void timer_phase(int hz)
         outportb(PIT_COMMAND, cmd);
         outportb(PIT_DATA_CHAN0, div & 0xFF);
         outportb(PIT_DATA_CHAN0, div >> 8);
-        kprintf(0,"Set timer phase to %d\n", hz);
 }
 
 void timer_handler(struct regs *unused __attribute__((unused)))
