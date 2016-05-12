@@ -15,6 +15,7 @@ unsigned short *textp;
 unsigned short *last_linep;
 unsigned short *scrl_linep;
 unsigned short attrib = 0x0F;
+unsigned short just_bg = 0x00;
 int curs_x, curs_y;
 
 output_device_t tty_output = {tty_puts};
@@ -23,7 +24,7 @@ void install_tty(void)
 {
         textp = (unsigned short *)TUI_BUFFER;
         scrl_linep = (textp + (TUI_LINEWIDTH));
-        last_linep = (scrl_linep + ((TUI_LINEMAX-1) * (TUI_LINEWIDTH)));
+        last_linep = (textp + ((TUI_LINEMAX) * (TUI_LINEWIDTH)));
         tty_setcolor(COLOR_GREEN, COLOR_BLACK);
         curs_x = curs_y = 0;
 }
@@ -31,25 +32,30 @@ void install_tty(void)
 void tty_setcolor(unsigned char fg, unsigned char bg)
 {
         attrib = (bg << 4) | (fg & 0x0F);
+        just_bg = (bg << 4) | (bg & 0x0F);
 }
 
 void tty_scroll(void)
 {
-        unsigned blank, temp;
+        unsigned blank;
         static const unsigned int scroll_bytes
-                = 2 * ((TUI_LINEMAX - 1) * TUI_LINEWIDTH);
+                = 2 * ((TUI_LINEMAX) * TUI_LINEWIDTH);
 
         /* Row 25 is the end, this means we need to scroll up */
         if(curs_y >= TUI_LINEMAX+1)
         {
                 /* Give a blank the right color */
-                blank = 0x20 | (attrib << 8);
+                blank = ' ' | (just_bg << 8);
 
                 /* Move the current text chunk that makes up the screen
                  * back in the buffer by a line */
                 memcpy (textp, scrl_linep, scroll_bytes);
                 /* Set the last line to be blank */
-                memset (last_linep, blank, TUI_LINEWIDTH);
+                int i;
+                for (i = 0; i < TUI_LINEWIDTH; i++)
+                {
+                        last_linep[i] = blank;
+                }
                 curs_y = TUI_LINEMAX;
         }
 }
