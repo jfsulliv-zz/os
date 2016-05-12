@@ -39,15 +39,19 @@ pg_map (void *vaddr, unsigned long paddr, pgflags_t flags)
         pd_ind = PD_INDEX(vaddr);
         ent = &page_directory->tabs[pd_ind];
         if (ent->ent & _PAGE_PROTNONE) {
-                if (!(PGENT_ADDR(ent->ent))) {
-                        /* That's a table miss. Allocate a page for it. */
-                        bug_on(!pfa_ready(), "PFA not initialized!");
-                        page_t *pg = pfa_alloc(M_KERNEL);
-                        if (!pg) {
-                                return -1; /* TODO return -ENOMEM */
-                        }
-                        ent->ent = phys_addr(pfa_base(), pg);
+                if (vaddr >= KERN_OFFS) {
+                        kprintf(0, "FATAL: kernel page %d not present\n",
+                                pd_ind);
+                        kprintf(0, "0x%08x\n", ent->ent);
+                        panic("fail");
                 }
+                /* That's a table miss. Allocate a page for it. */
+                bug_on(!pfa_ready(), "PFA not initialized!");
+                page_t *pg = pfa_alloc(M_KERNEL);
+                if (!pg) {
+                        return -1; /* TODO return -ENOMEM */
+                }
+                ent->ent = phys_addr(pfa_base(), pg);
                 ent->ent |= KPAGE_TAB;
         }
         tab = (pgtab_t *)&page_tables[pd_ind];
