@@ -38,6 +38,13 @@ char *strncpy(char *dst, const char *from, size_t n)
 	return orig_dst;
 }
 
+char *strlcpy(char *dst, const char *from, size_t n)
+{
+        char *ret = strncpy(dst, from, n);
+        dst[n-1] = '\0';
+        return ret;
+}
+
 char *strncat(char *dst, const char *from, size_t n)
 {
         char *orig_dst = dst;
@@ -54,6 +61,13 @@ char *strncat(char *dst, const char *from, size_t n)
                 *dst = '\0';
         }
         return orig_dst;
+}
+
+char *strlcat(char *dest, const char *src, size_t n)
+{
+        char *ret = strncat(dest, src, n);
+        ret[n-1] = '\0';
+        return ret;
 }
 
 void *memset(void *s, int c, size_t n)

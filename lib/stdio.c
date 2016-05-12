@@ -156,9 +156,46 @@ int vsnprintf(char *str, size_t size, const char *format, va_list args)
 	return i;
 }
 
+int vslprintf(char *str, size_t size, const char *format, va_list args)
+{
+        int len = vsnprintf(str, size-1, format, args);
+        str[size-1] = '\0';
+        return len;
+}
+
 int snprintf(char *str, size_t size, const char *format, ...)
 {
 	va_list args;
 	va_start (args, format);
 	return vsnprintf(str, size, format, args);
+}
+
+int slprintf(char *str, size_t size, const char *format, ...)
+{
+        va_list args;
+        va_start (args, format);
+        int len = vsnprintf(str, size-1, format, args);
+        str[size-1] = '\0';
+        return len;
+}
+
+int banner(char *dest, size_t sz, char border, const char *fmt, ...)
+{
+        va_list args;
+        char tmp[sz];
+        va_start (args, fmt);
+        int len = vslprintf(tmp, sz, fmt, args);
+        if (len < 0)
+                return -1;
+        if ((unsigned)len + 1 >= sz-1) {
+                strlcpy(dest, tmp, sz);
+                return len;
+        }
+        int pad_len = (sz - 1 - len);
+        if (pad_len + (unsigned)len >= sz)
+                return -1;
+        memset(dest, border, pad_len + len);
+        memcpy(dest + (pad_len/2), tmp, len);
+        dest[pad_len + len] = '\0';
+        return (pad_len + len);
 }

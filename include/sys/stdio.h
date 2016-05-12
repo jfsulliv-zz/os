@@ -28,6 +28,10 @@ static inline int ord(char c)
 }
 
 int snprintf(char *str, size_t size, const char *format, ...);
+int slprintf(char *str, size_t size, const char *format, ...);
 int vsnprintf(char *str, size_t size, const char *format, va_list args);
+int vslprintf(char *str, size_t size, const char *format, va_list args);
+
+int banner(char *dest, size_t sz, char border, const char *fmt, ...);
 
 #endif /* _SYS_STDIO_H_ */
