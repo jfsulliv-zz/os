@@ -230,11 +230,23 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
                 {
                         i--; page_t *buddy = (page_t *)(page + (1UL << i));
                         buddy->order = i;
+                        if (page->vaddr) {
+                                buddy->vaddr = (void *)_va(phys_addr(
+                                                           pfa.pages,
+                                                           buddy));
+                        }
                         mark_avail(buddy);
                         list_add(&zones[i].list, &buddy->list);
                 }
                 page->order = i;
 
+                /* Map the pages into the tab. */
+                if (page->vaddr) {
+                        bug_on(pg_map_pages(page->vaddr, (1 << page->order),
+                                            phys_addr(pfa.pages, page),
+                                            mflags_to_pgflags(flags)),
+                               "Page mapping failed");
+                }
                 return page;
         }
 
@@ -272,6 +284,11 @@ pfa_free_pages(page_t *p, unsigned int order)
                 if (buddy->order != order)
                         break;
 
+                if (p->vaddr) {
+                        buddy->vaddr = (void *)_va(phys_addr(pfa.pages,
+                                                             buddy));
+                }
+
                 list_del(&buddy->list);
                 if (buddy < p)
                         p = buddy;
@@ -287,6 +304,12 @@ pfa_free_pages(page_t *p, unsigned int order)
                 list_add(&pfa.low_zones[order].list, &p->list);
         else
                 list_add(&pfa.high_zones[order].list, &p->list);
+
+        /* Unmap the pages. */
+        if (p->vaddr) {
+                bug_on(pg_unmap_pages(p->vaddr, (1 << p->order)),
+                        "Page unmapping failed");
+        }
 }
 
 void
@@ -358,6 +381,11 @@ pfa_test(void)
         char *foo = alloc_page(M_KERNEL);
         bug_on(!foo, "alloc_page returned NULL");
         bug_on(!is_lowmem(pfa.limits, _pa(foo)), "Out of bounds returned");
+        foo[0] = 'h';
+        foo[1] = 'i';
+        foo[2] = '!';
+        foo[3] = '\0';
+        kprintf(0, "%s\n", foo);
         free_page(foo);
 
         kprintf(0, "pfa_test passed\n");
