@@ -1,5 +1,6 @@
 extern isr_handler
 extern irq_handler
+extern pagefault_handler
 
 isr_common_stub:
         pushad                  ; Push limited register state
@@ -65,7 +66,33 @@ ISR_ERRORCODE   10
 ISR_ERRORCODE   11
 ISR_ERRORCODE   12
 ISR_ERRORCODE   13
-ISR_ERRORCODE   14
+
+; Page faults get their own handler for efficiency.
+global isr14
+isr14:
+        push byte 14            ; #PF
+        pushad                  ; Push limited register state
+        push ds
+        push es
+        push fs
+        push gs
+        mov ax, 0x10            ; Kernel DS selector
+        mov ds, ax
+        mov es, ax
+        mov fs, ax
+        mov gs, ax
+        mov eax, esp
+        push eax                ; Push the stack pointer
+        call pagefault_handler
+        pop eax                 ; Reload the original DS
+        pop gs
+        pop fs
+        pop es
+        pop ds
+        popad
+        add esp, 8
+        iret                    ; Pop the CS, EIP, EFLAGS, SS, ESP
+
 ISR_NOERRORCODE 15
 ISR_NOERRORCODE 16
 ISR_NOERRORCODE 17
