@@ -60,7 +60,9 @@ init_pagetables(memlimits_t *lim)
                         break;
 
                 tab_paddr = tables_region + ((i - (pg0_index + 1))
-                                             * (PTAB_SIZE - 1));
+                                             * PTAB_SIZE);
+                bug_on(PAGE_FLAGS_MASK & tab_paddr,
+                        "Page address contains flags");
 
                 /* We will set up as many entries as it takes to map
                  * the full allocated region in. */
@@ -86,4 +88,5 @@ void
 init_paging(memlimits_t *lim)
 {
         init_pagetables(lim);
+
 }
