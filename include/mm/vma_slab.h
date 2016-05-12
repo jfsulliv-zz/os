@@ -28,6 +28,7 @@ typedef struct slab_cache {
         unsigned long      refct;
         unsigned int       grown;
         unsigned long      wastage;
+        unsigned long      big_bused;
         slab_cache_flags_t flags;
 
         struct list_head   cache_list;

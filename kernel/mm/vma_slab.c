@@ -141,6 +141,8 @@ slab_data(slab_cache_t *cp, slab_t *sp)
          .num      = 0,                                         \
          .refct    = 0,                                         \
          .grown    = 0,                                         \
+         .wastage  = 0,                                         \
+         .big_bused= 0,                                         \
          .flags    = (sz < (PAGE_SIZE/8) ? 0 : SLAB_CACHE_SLABOFF),\
          {NULL, NULL},                                          \
          {NULL, NULL},                                          \
@@ -591,28 +593,33 @@ create_kmalloc_record(mflags_t flags, void *vaddr, unsigned long order)
 void *
 kmalloc(unsigned long size, mflags_t flags)
 {
-        unsigned long ind;
+        unsigned long ind, pf_ord;
         void *ret;
 
         if (BAD_MFLAGS(flags) || size == 0)
                 return NULL;
 
         ind = next_pow2(size);
+        if (size < PAGE_SIZE)
+                pf_ord = 0;
+        else
+                pf_ord = next_pow2(size / PAGE_SIZE);
         /* Use the kmalloc_4 slab for 1..4 size allocs */
         if (ind < 2)
                 ind = 2;
         if (ind-2 >= vma.num_kmalloc_caches) {
                 /* Just go right to the pager. */
-                ret = alloc_pages(flags, ind);
+                ret = alloc_pages(flags, pf_ord);
                 if (!ret)
                         return NULL;
-                if (create_kmalloc_record(flags, ret, ind)) {
+                if (create_kmalloc_record(flags, ret, pf_ord)) {
                         free_pages(ret, ind);
                         return NULL;
                 }
+                vma.kmalloc_record_cache.big_bused += PAGE_SIZE<<pf_ord;
         } else {
                 ret = slab_cache_alloc(&vma.kmalloc_caches[ind-2], flags);
-                if (create_kmalloc_record(flags, ret, ind)) {
+                if (create_kmalloc_record(flags, ret, pf_ord)) {
                         slab_cache_free(&vma.kmalloc_caches[ind-2], ret);
                         return NULL;
                 }
@@ -635,6 +642,10 @@ kfree(void *addr)
 
         if (bp->order-2 >= vma.num_kmalloc_caches) {
                 free_pages(addr, bp->order);
+                bug_on(vma.kmalloc_record_cache.big_bused
+                        < PAGE_SIZE<<bp->order,
+                        "Not enough big bytes for freeing.");
+                vma.kmalloc_record_cache.big_bused -= PAGE_SIZE<<bp->order;
         } else {
                 slab_cache_free(&vma.kmalloc_caches[bp->order-2], addr);
         }
@@ -674,6 +685,10 @@ static void
 vma_init_kmalloc_caches(void)
 {
         unsigned long i;
+        slab_init_cache(&vma.kmalloc_record_cache, "kmalloc_rec_cache",
+                        sizeof(kmalloc_record_t), sizeof(kmalloc_record_t),
+                        0, kmalloc_record_ctor, kmalloc_record_dtor);
+        slab_add_cache(&vma.kmalloc_record_cache);
         for (i = 0; i < vma.num_kmalloc_caches; i++)
         {
                 vma.kmalloc_caches[i].wastage
@@ -688,10 +703,6 @@ vma_init_kmalloc_caches(void)
         {
                 list_head_init(&kmalloc_record_buckets[i]);
         }
-        slab_init_cache(&vma.kmalloc_record_cache, "kmalloc_rec_cache",
-                        sizeof(kmalloc_record_t), sizeof(kmalloc_record_t),
-                        0, kmalloc_record_ctor, kmalloc_record_dtor);
-        slab_add_cache(&vma.kmalloc_record_cache);
 }
 
 static void
@@ -742,7 +753,7 @@ static inline unsigned long
 cache_usage(slab_cache_t *cp)
 {
         slab_t *sp;
-        unsigned long t = 0;
+        unsigned long t = cp->big_bused;
         list_foreach_entry(&cp->slabs_full, sp, slab_list)
         {
                t += slab_usage(cp, sp);
@@ -798,7 +809,7 @@ vma_test(void)
         void *p = NULL;
         int i = -1;
         unsigned int j = -1;
-        for (j = 0; j < 14; j++) {
+        for (j = 0; j < 15; j++) {
                 for (i = 0; i < 100; i++) {
                         p = kmalloc(1 << j, 0);
                         if (p)
