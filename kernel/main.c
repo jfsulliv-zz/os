@@ -23,7 +23,6 @@ main(multiboot_info_t *mbd)
 #endif
         /* Set up the VMA */
         vma_init();
-        kprintf(0, "Set up vma\n");
 #ifdef CONF_DEBUG
         vma_test();
 #endif
