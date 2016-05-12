@@ -18,6 +18,7 @@
 #include <sys/string.h>
 #include <util/cmp.h>
 #include <util/math.h>
+#include <util/hash.h>
 
 typedef struct {
         size_t num_caches;
@@ -31,6 +32,8 @@ typedef struct {
         /* A fixed list of caches for generic allocations. */
         slab_cache_t *kmalloc_caches;
         size_t num_kmalloc_caches;
+        /* A cache for retaining our kmalloc_record records. */
+        slab_cache_t kmalloc_record_cache;
 
         struct list_head *reap_scanh; /* Where to start reaping from */
 } vma_t;
@@ -160,6 +163,60 @@ static slab_cache_t malloc_caches[] = {
         KMALLOC_CACHE(4096),
         KMALLOC_CACHE(8192)
 };
+
+/* We use this to keep track of big kmallocs which go directly to the
+ * system pager. */
+typedef struct kmalloc_record {
+        void *vaddr;
+        unsigned int order;
+        struct list_head list;
+} kmalloc_record_t;
+
+static void
+kmalloc_record_ctor(void *p, __attribute__((unused)) size_t sz)
+{
+        kmalloc_record_t *bp = (kmalloc_record_t *)p;
+        bp->vaddr = 0;
+        bp->order = 0;
+        list_head_init(&bp->list);
+}
+
+static void
+kmalloc_record_dtor(void *p, __attribute__((unused)) size_t sz)
+{
+        kmalloc_record_t *bp = (kmalloc_record_t *)p;
+        list_del(&bp->list);
+}
+
+#define KMALLOC_NUM_BUCKETS 113
+static struct list_head kmalloc_record_buckets[KMALLOC_NUM_BUCKETS];
+
+static struct list_head
+select_kmalloc_record_bucket(void *vaddr)
+{
+        uint32_t h = jenkins_hash32(&vaddr, sizeof(void *), 0xdeadbeef);
+        return kmalloc_record_buckets[h % KMALLOC_NUM_BUCKETS];
+}
+
+static kmalloc_record_t *
+find_kmalloc_record(void *vaddr)
+{
+        struct list_head buk = select_kmalloc_record_bucket(vaddr);
+        kmalloc_record_t *p;
+        list_foreach_entry(&buk, p, list)
+        {
+                if (p->vaddr == vaddr)
+                        return p;
+        }
+        return NULL;
+}
+
+static void
+add_kmalloc_record(kmalloc_record_t *bp)
+{
+        struct list_head buk = select_kmalloc_record_bucket(bp->vaddr);
+        list_add(&buk, &bp->list);
+}
 
 static vma_t vma = {
         .num_caches         = 0,
@@ -518,10 +575,24 @@ slab_reap(void)
         cache_reap_empty(to_reap);
 }
 
+static int
+create_kmalloc_record(mflags_t flags, void *vaddr, unsigned long order)
+{
+        kmalloc_record_t *bp = slab_cache_alloc(&vma.kmalloc_record_cache,
+                                                flags);
+        if (!bp)
+                return 1;
+        bp->vaddr = vaddr;
+        bp->order = order;
+        add_kmalloc_record(bp);
+        return 0;
+}
+
 void *
 kmalloc(unsigned long size, mflags_t flags)
 {
         unsigned long ind;
+        void *ret;
 
         if (BAD_MFLAGS(flags) || size == 0)
                 return NULL;
@@ -532,21 +603,42 @@ kmalloc(unsigned long size, mflags_t flags)
                 ind = 2;
         if (ind-2 >= vma.num_kmalloc_caches) {
                 /* Just go right to the pager. */
-                /* TODO book-keeping */
-                void *ret = alloc_pages(flags, ind / PAGE_SIZE);
-                return ret;
-
+                ret = alloc_pages(flags, ind);
+                if (!ret)
+                        return NULL;
+                if (create_kmalloc_record(flags, ret, ind)) {
+                        free_pages(ret, ind);
+                        return NULL;
+                }
+        } else {
+                ret = slab_cache_alloc(&vma.kmalloc_caches[ind-2], flags);
+                if (create_kmalloc_record(flags, ret, ind)) {
+                        slab_cache_free(&vma.kmalloc_caches[ind-2], ret);
+                        return NULL;
+                }
         }
-        return slab_cache_alloc(&vma.kmalloc_caches[ind-2], flags);
+        return ret;
+
 }
 
 void
 kfree(void *addr)
 {
+        unsigned long ind;
+        kmalloc_record_t *bp;
+
         if (!addr)
                 return;
 
-        panic("TODO");
+        bp = find_kmalloc_record(addr);
+        bug_on(!bp, "No previous record found");
+
+        if (bp->order-2 >= vma.num_kmalloc_caches) {
+                free_pages(addr, bp->order);
+        } else {
+                slab_cache_free(&vma.kmalloc_caches[bp->order-2], addr);
+        }
+        slab_cache_free(&vma.kmalloc_record_cache, bp);
 }
 
 void
@@ -592,6 +684,14 @@ vma_init_kmalloc_caches(void)
                 list_head_init(&vma.kmalloc_caches[i].slabs_empty);
                 slab_add_cache(&vma.kmalloc_caches[i]);
         }
+        for (i = 0; i < KMALLOC_NUM_BUCKETS; i++)
+        {
+                list_head_init(&kmalloc_record_buckets[i]);
+        }
+        slab_init_cache(&vma.kmalloc_record_cache, "kmalloc_rec_cache",
+                        sizeof(kmalloc_record_t), sizeof(kmalloc_record_t),
+                        0, kmalloc_record_ctor, kmalloc_record_dtor);
+        slab_add_cache(&vma.kmalloc_record_cache);
 }
 
 static void
