@@ -647,11 +647,11 @@ vma_test(void)
         void *p = NULL;
         int i = -1;
         unsigned int j = -1;
-        for (j = 9; j < 12; j++) {
+        for (j = 0; j < 14; j++) {
                 for (i = 0; i < 100; i++) {
                         p = kmalloc(1 << j, 0);
+                        *(char *)p = 'h'; // Make sure we can read/write
                 }
-                kprintf(0, "Allocs of size %d good\n", 1 << j);
         }
         kprintf(0, "vma_test passed\n", j);
 #endif
