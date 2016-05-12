@@ -13,6 +13,7 @@
 #include <sys/config.h>
 #include <sys/kprintf.h>
 #include <sys/panic.h>
+#include <sys/size.h>
 #include <sys/stdio.h>
 #include <sys/string.h>
 #include <util/cmp.h>
@@ -38,7 +39,7 @@ typedef enum {
         SLAB_STATE_FULL,
         SLAB_STATE_PARTIAL,
         SLAB_STATE_EMPTY,
-        INVAL = -1,
+        SLAB_STATE_INVAL = -1,
 } slab_state_t;
 
 typedef struct slab_buf slab_buf_t;
@@ -175,45 +176,49 @@ slab_add_cache(slab_cache_t *cp)
         vma.num_caches++;
 }
 
+/* Sets cp->size, cp->pf_order, cp->num, cp->align.
+ * Assumes that cp->flags are set. */
 static unsigned long
-compute_slab_order(size_t obj_size)
+compute_slab_wastage(slab_cache_t *cp, size_t min_align)
 {
-        unsigned long ret;
+        unsigned long wastage = 0;
+        unsigned long waste_per_obj = 0;
 
-        /* TODO: This could be a lot smarter. */
-        if (obj_size < PAGE_SIZE / 8)
-                ret = 1;
-        else if (obj_size < PAGE_SIZE)
-                ret = 3;
-        else
-                ret = MIN(PFA_MAX_PAGE_ORDER-1, 2 + next_pow2(obj_size));
-
-        return ret;
-}
-
-static unsigned long
-compute_align(slab_cache_t *cp, size_t min_align)
-{
+        /* Size and alignment are easy. */
         if (min_align < cp->obj_size)
                 min_align = cp->obj_size;
-        if (cp->flags & SLAB_CACHE_SLABOFF)
-                return MAX(cp->obj_size, min_align);
-        else
-                return MAX(cp->obj_size + sizeof(slab_buf_t), min_align);
-}
-
-static unsigned long
-compute_num_objs(slab_cache_t *cp)
-{
         if (cp->flags & SLAB_CACHE_SLABOFF) {
-                return MIN(SLAB_MAX_OBJS,
-                        ((PAGE_SIZE << cp->pf_order) / cp->obj_size));
+                cp->align = MAX(cp->obj_size, min_align);
         } else {
-                unsigned long size_per_buf
-                        = cp->obj_size + sizeof(slab_buf_t);
-                return MIN((((PAGE_SIZE << cp->pf_order) - sizeof(slab_t))
-                        / size_per_buf), SLAB_MAX_OBJS);
+                cp->align = MAX(cp->obj_size + sizeof(slab_buf_t), min_align);
+                waste_per_obj = cp->align - cp->obj_size;
         }
+
+        /* Now we can work out the number of objects per cache and its
+         * pf_order simultaneously.
+         *
+         * The goal here is to have cp->num as close to SLAB_MAX_OBJS
+         * as possible while still resulting in cp->align being close
+         * to a divisor of 1<<(cp->pf_order).
+         * */
+        unsigned long total_slabsize;
+        total_slabsize = SLAB_MAX_OBJS * cp->align;
+        if (!(cp->flags & SLAB_CACHE_SLABOFF)) {
+                wastage += sizeof(slab_t);
+                total_slabsize -= sizeof(slab_t);
+        }
+        cp->pf_order = MIN(PFA_MAX_PAGE_ORDER,
+                           LOG2(total_slabsize / PAGE_SIZE));
+        if (cp->flags & SLAB_CACHE_SLABOFF) {
+                cp->num = (PAGE_SIZE<<cp->pf_order)/cp->align;
+        } else {
+                cp->num = ((PAGE_SIZE<<cp->pf_order) - sizeof(slab_t))
+                           / cp->align;
+        }
+
+        wastage += waste_per_obj * cp->num;
+        wastage += (PAGE_SIZE<<cp->pf_order) - (cp->num * cp->align);
+        return wastage;
 }
 
 static void
@@ -226,9 +231,7 @@ slab_init_cache(slab_cache_t *cp,
         strlcpy(cp->name, name, CACHE_NAMELEN+1);
         cp->obj_size            = size;
         cp->flags               = flags;
-        cp->pf_order            = compute_slab_order(size);
-        cp->align               = compute_align(cp, align);
-        cp->num                 = compute_num_objs(cp);
+        cp->wastage             = compute_slab_wastage(cp, align);
         cp->refct               = 0;
         cp->grown               = 0;
         cp->obj_ctor            = ctor;
@@ -398,9 +401,7 @@ slab_cache_allocmgmt(slab_cache_t *cp, void *objp, mflags_t lflags)
 static slab_buf_t *
 slab_find_free(slab_cache_t *cp, slab_t *sp)
 {
-        slab_buf_t *bp = sp->freep;
-        bug_on(!bp, "No free entries in partial slab");
-        return bp;
+        return sp->freep;
 }
 
 void *
@@ -412,7 +413,7 @@ slab_cache_alloc(slab_cache_t *cp, mflags_t flags)
         slab_t *sp = list_first_entry_or_null(&cp->slabs_partial,
                                               slab_t, slab_list);
         if (sp) {
-                if (++sp->num == cp->num-1) {
+                if (++sp->num == cp->num) {
                         /* Send this over to the full slab list. */
                         list_del(&sp->slab_list);
                         list_add(&cp->slabs_full, &sp->slab_list);
@@ -441,6 +442,7 @@ slab_cache_alloc(slab_cache_t *cp, mflags_t flags)
                 slab_freepages(cp, buf);
                 return NULL;
         }
+        ++sp->num;
         list_add(&cp->slabs_partial, &sp->slab_list);
         /* Prevent reaping until either an alloc happens, or until
          * the slab is a reap candidate twice. */
@@ -582,10 +584,8 @@ vma_init_kmalloc_caches(void)
         unsigned long i;
         for (i = 0; i < vma.num_kmalloc_caches; i++)
         {
-                vma.kmalloc_caches[i].num
-                        = compute_num_objs(&vma.kmalloc_caches[i]);
-                vma.kmalloc_caches[i].align
-                        = compute_align(&vma.kmalloc_caches[i], 0);
+                vma.kmalloc_caches[i].wastage
+                        = compute_slab_wastage(&vma.kmalloc_caches[i], 0);
                 list_head_init(&vma.kmalloc_caches[i].cache_list);
                 list_head_init(&vma.kmalloc_caches[i].slabs_full);
                 list_head_init(&vma.kmalloc_caches[i].slabs_partial);
@@ -608,7 +608,7 @@ vma_init_cache_cache(void)
         slab_init_cache(&vma.slab_buf_cache, "slab_buf_cache",
                         SLAB_MAX_OBJS * sizeof(slab_buf_t),
                         SLAB_MAX_OBJS * sizeof(slab_buf_t),
-                        0, slab_buf_ctor, slab_buf_ctor);
+                        0, slab_buf_ctor, slab_buf_dtor);
         slab_add_cache(&vma.slab_buf_cache);
 }
 
@@ -621,22 +621,73 @@ vma_init(void)
                         "Cache list has incorrect length.\n");
 }
 
+static inline unsigned long
+slab_usage(slab_cache_t *cp, slab_t *sp)
+{
+        unsigned long sz_per_obj;
+        if (cp->flags & SLAB_CACHE_SLABOFF)
+                sz_per_obj = cp->obj_size;
+        else
+                sz_per_obj = cp->obj_size + sizeof(slab_buf_t);
+        return sz_per_obj *sp->num;
+}
+
+static inline unsigned long
+slab_num_records(slab_t *sp)
+{
+        return sp->num;
+}
+
+static inline unsigned long
+cache_usage(slab_cache_t *cp)
+{
+        slab_t *sp;
+        unsigned long t = 0;
+        list_foreach_entry(&cp->slabs_full, sp, slab_list)
+        {
+               t += slab_usage(cp, sp);
+        }
+        list_foreach_entry(&cp->slabs_partial, sp, slab_list)
+        {
+               t += slab_usage(cp, sp);
+        }
+        return t;
+}
+
+static inline unsigned long
+cache_num_records(slab_cache_t *cp)
+{
+        slab_t *sp;
+        unsigned long t = 0;
+        list_foreach_entry(&cp->slabs_full, sp, slab_list)
+        {
+               t += slab_num_records(sp);
+        }
+        list_foreach_entry(&cp->slabs_partial, sp, slab_list)
+        {
+               t += slab_num_records(sp);
+        }
+        return t;
+}
+
 void
 vma_report(void)
 {
         slab_cache_t *cp;
         unsigned long i = 0;
-        char buf[54];
-        banner(buf, 54, '=', " %3d caches ", vma.num_caches);
+        char buf[77];
+        banner(buf, sizeof(buf), '=', " %3d caches ", vma.num_caches);
         kprintf(0,"%s\n", buf);
         list_foreach_entry_prev(&vma.cache_list, cp, cache_list)
         {
                 i++;
-                kprintf(0, "%18s: %4d empty %4d partial %4d full\n",
+                kprintf(0,
+                "%18s: %4d empty %4d partial %4d full |%6d KiB %5d objs\n",
                         cp->name, list_size(&cp->slabs_empty),
                         list_size(&cp->slabs_partial),
-                        list_size(&cp->slabs_full));
-                bug_on (i > vma.num_caches, "Bad cachelist setup\n");
+                        list_size(&cp->slabs_full),
+                        B_KiB(cache_usage(cp)),
+                        cache_num_records(cp));
         }
 }
 
@@ -650,7 +701,8 @@ vma_test(void)
         for (j = 0; j < 14; j++) {
                 for (i = 0; i < 100; i++) {
                         p = kmalloc(1 << j, 0);
-                        *(char *)p = 'h'; // Make sure we can read/write
+                        if (p)
+                                *(char *)p = 'h'; // Make sure we can read/write
                 }
         }
         kprintf(0, "vma_test passed\n", j);

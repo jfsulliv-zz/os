@@ -5,7 +5,7 @@
 #include <util/list.h>
 
 #define CACHE_NAMELEN 255
-#define SLAB_MAX_OBJS 4096 /* Max number of slab objects */
+#define SLAB_MAX_OBJS 512 /* Max number of objects per slab. */
 
 #define SLAB_CACHE_DMA_BIT     0
 #define SLAB_CACHE_NOREAP_BIT  1
@@ -27,6 +27,7 @@ typedef struct slab_cache {
         unsigned int       num;
         unsigned long      refct;
         unsigned int       grown;
+        unsigned long      wastage;
         slab_cache_flags_t flags;
 
         struct list_head   cache_list;
