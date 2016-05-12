@@ -34,6 +34,8 @@ typedef struct {
         size_t num_kmalloc_caches;
         /* A cache for retaining our kmalloc_record records. */
         slab_cache_t kmalloc_record_cache;
+        /* We only use this to attach a number to big kmalloc usage. */
+        slab_cache_t kmalloc_big_cache;
 
         struct list_head *reap_scanh; /* Where to start reaping from */
 } vma_t;
@@ -616,7 +618,7 @@ kmalloc(unsigned long size, mflags_t flags)
                         free_pages(ret, ind);
                         return NULL;
                 }
-                vma.kmalloc_record_cache.big_bused += PAGE_SIZE<<pf_ord;
+                vma.kmalloc_big_cache.big_bused += PAGE_SIZE<<pf_ord;
         } else {
                 ret = slab_cache_alloc(&vma.kmalloc_caches[ind-2], flags);
                 if (create_kmalloc_record(flags, ret, pf_ord)) {
@@ -642,10 +644,9 @@ kfree(void *addr)
 
         if (bp->order-2 >= vma.num_kmalloc_caches) {
                 free_pages(addr, bp->order);
-                bug_on(vma.kmalloc_record_cache.big_bused
-                        < PAGE_SIZE<<bp->order,
+                bug_on(vma.kmalloc_big_cache.big_bused < PAGE_SIZE<<bp->order,
                         "Not enough big bytes for freeing.");
-                vma.kmalloc_record_cache.big_bused -= PAGE_SIZE<<bp->order;
+                vma.kmalloc_big_cache.big_bused -= PAGE_SIZE<<bp->order;
         } else {
                 slab_cache_free(&vma.kmalloc_caches[bp->order-2], addr);
         }
@@ -703,6 +704,9 @@ vma_init_kmalloc_caches(void)
         {
                 list_head_init(&kmalloc_record_buckets[i]);
         }
+        slab_init_cache(&vma.kmalloc_big_cache, "kmalloc_big",
+                        1, 1, 0, NULL, NULL);
+        slab_add_cache(&vma.kmalloc_big_cache);
 }
 
 static void
