@@ -39,7 +39,7 @@ endef
 
 $(foreach p,$(MODULES),$(eval $(call OBJDEF,$(p))))
 
-.PHONY: all test img clean dist todolist cscope
+.PHONY: all test img clean clean_cscope dist todolist cscope
 
 all: img $(GRUBCFG) 
 	-cp $(OUT) $(ISODIR)/boot/$(OUT)
@@ -70,15 +70,17 @@ todolist:
 	-@for file in $(ALLFILES:Makefile=); do fgrep -H -e TODO -e \
 	    FIXME -e XXX $$file; done; true
 
-cscope.files:
+cscope.files: clean_cscope
 	scripts/find_src.sh > $@
 
 cscope: cscope.files
 	cscope -kbq
 
-clean:
+clean_cscope:
+	-$(RM) cscope.out cscope.files
+
+clean: clean_cscope
 	-$(RM) include/version.h
 	-$(RM) $(wildcard $(ALL_OBJS))
 	-$(RM) $(wildcard $(GRUBCFG) $(ISO) $(OUT) $(OUT).tgz) \
 		$(ISODIR)/boot/$(OUT)
-	-$(RM) cscope.out cscope.files
