@@ -6,7 +6,7 @@
 #include <mm/paging.h>
 #include <util/list.h>
 
-#define PFA_MAX_PAGE_ORDER 10
+#define PFA_MAX_PAGE_ORDER 12
 
 typedef struct {
         struct list_head list;

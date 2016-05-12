@@ -22,7 +22,7 @@ typedef struct {
         size_t num_caches;
         struct list_head cache_list;
         /* These contain slab and slab_buf objects for out-of-band
-         * slab tracking */
+         * slab tracking. */
         slab_cache_t slab_cache;
         slab_cache_t slab_buf_cache;
         /* Caches of caches! */
@@ -41,34 +41,42 @@ typedef enum {
         INVAL = -1,
 } slab_state_t;
 
+typedef struct slab_buf slab_buf_t;
+
 typedef struct slab {
         unsigned long    refct;
         unsigned long    num;
         slab_state_t     state;
         struct list_head slab_list;
-        struct list_head free_list;
+        slab_buf_t      *freep;
+        slab_buf_t      *lastp;
+        slab_buf_t      *slab_bufs;
         void            *buf;
 } slab_t;
 
 #define SLAB_INIT(slab) {                               \
         .refct = 0,                                     \
         .state = SLAB_STATE_EMPTY,                      \
-        .slab_list = LIST_HEAD_INIT((slab).slab_list)   \
+        .slab_list = LIST_HEAD_INIT((slab).slab_list),  \
+        .freep = NULL,                                  \
+        .lastp = NULL,                                  \
+        .slab_bufs = NULL,                              \
+        .buf = NULL,                                    \
 }
 
 /* For small objects, we keep these at the start of the memory buffer.
  * For big objects, this is kept as a dynamically allocated external
- * object. */
-typedef struct slab_buf {
+ * object, at sp->slab_bufs[slab_buf_index(sp, vaddr)]. */
+struct slab_buf {
         void         *buf;
         slab_t       *sp;
-        struct list_head free_list;
-} slab_buf_t;
+        slab_buf_t   *next;
+};
 
 #define SLAB_BUF_INIT(slab_buf) {                               \
         .buf = NULL,                                            \
         .cp  = NULL,                                            \
-        .free_list = LIST_HEAD_INIT((slab_buf).free_list);      \
+        .next = NULL,                                           \
 }
 
 /* Use ONLY when the slab_buf is in-band (i.e. ~SLAB_CACHE_OFFSLAB) */
@@ -83,7 +91,6 @@ slab_ctor(void *p, __attribute__((unused)) size_t sz)
         sp->refct  = 0;
         sp->state  = SLAB_STATE_EMPTY;
         list_head_init(&sp->slab_list);
-        list_head_init(&sp->free_list);
         sp->buf    = NULL;
 }
 
@@ -101,14 +108,13 @@ slab_buf_ctor(void *p, __attribute__((unused)) size_t sz)
         slab_buf_t *sp = (slab_buf_t *)p;
         sp->buf = NULL;
         sp->sp = NULL;
-        list_head_init(&sp->free_list);
+        sp->next = NULL;
 }
 
 static void
 slab_buf_dtor(void *p, __attribute__((unused)) size_t sz)
 {
         slab_buf_t *sp = (slab_buf_t *)p;
-        list_del(&sp->free_list);
 }
 
 static void *
@@ -131,7 +137,7 @@ slab_data(slab_cache_t *cp, slab_t *sp)
          .num      = 0,                                         \
          .refct    = 0,                                         \
          .grown    = 0,                                         \
-         .flags    = (sz < PAGE_SIZE/8 ? 0 : SLAB_CACHE_SLABOFF),\
+         .flags    = (sz < (PAGE_SIZE/8) ? 0 : SLAB_CACHE_SLABOFF),\
          {NULL, NULL},                                          \
          {NULL, NULL},                                          \
          {NULL, NULL},                                          \
@@ -180,7 +186,7 @@ compute_slab_order(size_t obj_size)
         else if (obj_size < PAGE_SIZE)
                 ret = 3;
         else
-                ret = MAX(SLAB_MAX_ORDER, 2 + next_pow2(obj_size));
+                ret = MIN(PFA_MAX_PAGE_ORDER-1, 2 + next_pow2(obj_size));
 
         return ret;
 }
@@ -200,12 +206,13 @@ static unsigned long
 compute_num_objs(slab_cache_t *cp)
 {
         if (cp->flags & SLAB_CACHE_SLABOFF) {
-                return ((PAGE_SIZE << cp->pf_order) / cp->obj_size);
+                return MIN(SLAB_MAX_OBJS,
+                        ((PAGE_SIZE << cp->pf_order) / cp->obj_size));
         } else {
                 unsigned long size_per_buf
                         = cp->obj_size + sizeof(slab_buf_t);
-                return (((PAGE_SIZE << cp->pf_order) - sizeof(slab_t))
-                        / size_per_buf);
+                return MIN((((PAGE_SIZE << cp->pf_order) - sizeof(slab_t))
+                        / size_per_buf), SLAB_MAX_OBJS);
         }
 }
 
@@ -218,9 +225,9 @@ slab_init_cache(slab_cache_t *cp,
 {
         strlcpy(cp->name, name, CACHE_NAMELEN+1);
         cp->obj_size            = size;
+        cp->flags               = flags;
         cp->pf_order            = compute_slab_order(size);
         cp->align               = compute_align(cp, align);
-        cp->flags               = flags;
         cp->num                 = compute_num_objs(cp);
         cp->refct               = 0;
         cp->grown               = 0;
@@ -333,23 +340,35 @@ slab_init_objects(slab_cache_t *cp, slab_t *sp, mflags_t lflags)
         void *p;
         unsigned long i;
 
+        if (cp->flags & SLAB_CACHE_SLABOFF) {
+                sp->slab_bufs = slab_cache_alloc(&vma.slab_buf_cache,
+                                                 lflags);
+                if (!sp->slab_bufs)
+                        return 1;
+        } else {
+                sp->slab_bufs = NULL;
+        }
+
         p = slab_data(cp, sp);
         for (i = 0; i < cp->num; i++) {
                 slab_buf_t *bp;
                 void *data = ((char *)p + (i * cp->align));
                 if (cp->obj_ctor)
                         cp->obj_ctor(data, cp->obj_size);
-                if (!SLAB_CACHE_SLABOFF) {
-                        bp = slab_cache_alloc(&vma.slab_buf_cache, lflags);
-                        if (!bp)
-                                return 1;
+                if (cp->flags & SLAB_CACHE_SLABOFF) {
+                        bp = &sp->slab_bufs[i];
                 } else {
                         bp = slab_buf_hdr((char *)sp->buf
                                 + (i * cp->align));
                         slab_buf_ctor(bp, 0);
                 }
                 bp->buf = data;
-                list_add(&sp->free_list, &bp->free_list);
+                if (!sp->freep) {
+                        sp->freep = sp->lastp = bp;
+                } else {
+                        sp->lastp->next = bp;
+                        sp->lastp = bp;
+                }
         }
         return 0;
 }
@@ -379,9 +398,7 @@ slab_cache_allocmgmt(slab_cache_t *cp, void *objp, mflags_t lflags)
 static slab_buf_t *
 slab_find_free(slab_cache_t *cp, slab_t *sp)
 {
-        slab_buf_t *bp = list_first_entry_or_null(&sp->free_list,
-                                                  slab_buf_t,
-                                                  free_list);
+        slab_buf_t *bp = sp->freep;
         bug_on(!bp, "No free entries in partial slab");
         return bp;
 }
@@ -395,7 +412,7 @@ slab_cache_alloc(slab_cache_t *cp, mflags_t flags)
         slab_t *sp = list_first_entry_or_null(&cp->slabs_partial,
                                               slab_t, slab_list);
         if (sp) {
-                if (++sp->num == cp->num) {
+                if (++sp->num == cp->num-1) {
                         /* Send this over to the full slab list. */
                         list_del(&sp->slab_list);
                         list_add(&cp->slabs_full, &sp->slab_list);
@@ -431,7 +448,7 @@ slab_cache_alloc(slab_cache_t *cp, mflags_t flags)
 out:
         bp = slab_find_free(cp, sp);
         bug_on(!bp, "No free object found (slab corrupted?)");
-        list_del(&bp->free_list);
+        sp->freep = bp->next;
         return bp->buf;
 }
 
@@ -589,7 +606,8 @@ vma_init_cache_cache(void)
                         0, slab_ctor, slab_ctor);
         slab_add_cache(&vma.slab_cache);
         slab_init_cache(&vma.slab_buf_cache, "slab_buf_cache",
-                        sizeof(slab_buf_t), sizeof(slab_buf_t),
+                        SLAB_MAX_OBJS * sizeof(slab_buf_t),
+                        SLAB_MAX_OBJS * sizeof(slab_buf_t),
                         0, slab_buf_ctor, slab_buf_ctor);
         slab_add_cache(&vma.slab_buf_cache);
 }
@@ -629,13 +647,11 @@ vma_test(void)
         void *p = NULL;
         int i = -1;
         unsigned int j = -1;
-        for (j = 0; j < 8; j++) {
+        for (j = 9; j < 12; j++) {
                 for (i = 0; i < 100; i++) {
                         p = kmalloc(1 << j, 0);
-                        if (p) {
-                                j++;
-                        }
                 }
+                kprintf(0, "Allocs of size %d good\n", 1 << j);
         }
         kprintf(0, "vma_test passed\n", j);
 #endif

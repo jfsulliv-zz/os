@@ -5,7 +5,7 @@
 #include <util/list.h>
 
 #define CACHE_NAMELEN 255
-#define SLAB_MAX_ORDER 10  /* Slabs can only be 2^10 pages */
+#define SLAB_MAX_OBJS 4096 /* Max number of slab objects */
 
 #define SLAB_CACHE_DMA_BIT     0
 #define SLAB_CACHE_NOREAP_BIT  1
