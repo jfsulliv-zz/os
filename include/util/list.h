@@ -57,7 +57,7 @@ list_del(struct list_head *n)
 static inline bool
 list_empty(struct list_head *l)
 {
-        return (l->prev == l->next);
+        return (l->next == l);
 }
 
 static inline size_t
