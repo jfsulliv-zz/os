@@ -201,8 +201,8 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
         page_t *page;
         pfa_block_t *zone, *zones;
 
-        bug_on((order >= PFA_MAX_PAGE_ORDER),
-               "Invalid order for allocation.");
+        if (order >= PFA_MAX_PAGE_ORDER)
+                return NULL;
         bug_on(!pfa.ready, "PFA used before initialization.");
 
         if (BAD_MFLAGS(flags))
