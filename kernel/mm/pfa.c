@@ -385,7 +385,6 @@ pfa_test(void)
         foo[1] = 'i';
         foo[2] = '!';
         foo[3] = '\0';
-        kprintf(0, "%s\n", foo);
         free_page(foo);
 
         kprintf(0, "pfa_test passed\n");
