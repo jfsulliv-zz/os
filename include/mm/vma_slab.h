@@ -7,13 +7,13 @@
 #define CACHE_NAMELEN 255
 #define SLAB_MAX_OBJS 512 /* Max number of objects per slab. */
 
-#define SLAB_CACHE_DMA_BIT     0
-#define SLAB_CACHE_NOREAP_BIT  1
-#define SLAB_CACHE_SLABOFF_BIT 2
+#define SLAB_CACHE_DMA_BIT      0
+#define SLAB_CACHE_NOREAP_BIT   1
+#define SLAB_CACHE_SLABOFF_BIT  2
 
-#define SLAB_CACHE_DMA    (1 << SLAB_CACHE_DMA_BIT)
-#define SLAB_CACHE_NOREAP (1 << SLAB_CACHE_NOREAP_BIT)
-#define SLAB_CACHE_SLABOFF (1 << SLAB_CACHE_SLABOFF_BIT)
+#define SLAB_CACHE_DMA          (1 << SLAB_CACHE_DMA_BIT)
+#define SLAB_CACHE_NOREAP       (1 << SLAB_CACHE_NOREAP_BIT)
+#define SLAB_CACHE_SLABOFF      (1 << SLAB_CACHE_SLABOFF_BIT)
 
 #define SLAB_CACHE_GOODFLAGS (GENMASK(2,0))
 
@@ -35,6 +35,9 @@ typedef struct slab_cache {
         struct list_head   slabs_full;
         struct list_head   slabs_partial;
         struct list_head   slabs_empty;
+
+#define SLAB_NUM_BUCKETS 113
+        struct list_head   slab_map[SLAB_NUM_BUCKETS];
 
         void (*obj_ctor)(void *, size_t);
         void (*obj_dtor)(void *, size_t);
