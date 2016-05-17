@@ -112,6 +112,13 @@ idt_flush:
         lidt [eax]
         ret
 
+global tss_flush
+tss_flush:
+        mov ax, [esp+4]
+        sal ax, 3 ; each GDTE is 8 bytes
+        ltr ax
+        ret
+
 section .tables
 align 0x1000
 global proc0_pdir

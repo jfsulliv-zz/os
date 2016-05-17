@@ -3,6 +3,7 @@
 
 #include <machine/system.h>
 #include <machine/regs.h>
+#include <mm/paging.h>
 
 /*
  * Definitions for the interrupt request handling.
@@ -10,6 +11,11 @@
  * James Sullivan <sullivan.james.f@gmail.com>
  * 06/15
  */
+
+#define IRQ_STACK_ORDER (2)
+#define IRQ_STACK_SIZE  (PAGE_SIZE << IRQ_STACK_ORDER)
+
+char irq_stack[IRQ_STACK_SIZE];
 
 static inline void
 disable_interrupts(void)
