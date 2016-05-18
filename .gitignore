@@ -4,3 +4,4 @@ kernel-*.iso
 *.d
 isodir/
 cscope.out
+include/version.h

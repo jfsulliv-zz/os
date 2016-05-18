@@ -33,6 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define _MM_PFA_H_
 
 #include <stdbool.h>
+#include <sys/debug.h>
 #include <mm/flags.h>
 #include <mm/paging.h>
 #include <util/list.h>
@@ -103,6 +104,6 @@ page_t *pfa_base(void);
 #define alloc_page(flags) alloc_pages(flags, 0)
 #define free_page(page)   free_pages(page, 0)
 
-void pfa_test(void);
+__test void pfa_test(void);
 
 #endif

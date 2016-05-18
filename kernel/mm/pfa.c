@@ -44,6 +44,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/paging.h>
 #include <mm/pfa.h>
 #include <sys/config.h>
+#include <sys/debug.h>
 #include <sys/kprintf.h>
 #include <sys/string.h>
 #include <sys/size.h>
@@ -388,10 +389,9 @@ pfa_base(void)
         return pfa.pages;
 }
 
-void
+__test void
 pfa_test(void)
 {
-#ifdef CONF_DEBUG
         /* First, ensure that each type of alloc stays in its region. */
         page_t *p;
         p = pfa_alloc(M_DMA);
@@ -419,5 +419,4 @@ pfa_test(void)
         free_page(foo);
 
         kprintf(0, "pfa_test passed\n");
-#endif
 }

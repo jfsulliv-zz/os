@@ -939,7 +939,7 @@ vma_report(void)
         }
 }
 
-static void
+__test static void
 vma_test_kmalloc(void)
 {
         void *p = NULL;
@@ -959,7 +959,7 @@ vma_test_kmalloc(void)
         kprintf(0, "vma_test_kmalloc passed\n");
 }
 
-static void
+__test static void
 vma_test_cache_create(void)
 {
         slab_cache_t *cp;
@@ -977,14 +977,14 @@ vma_test_cache_create(void)
         kprintf(0, "vma_test_cache_create passed\n");
 }
 
-static void
+__test static void
 vma_test_reap(void)
 {
         slab_reap();
         kprintf(0, "vma_test_reap passed\n");
 }
 
-void
+__test void
 vma_test(void)
 {
 #ifdef CONF_DEBUG

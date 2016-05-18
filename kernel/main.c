@@ -31,11 +31,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <multiboot.h>
 #include <machine/arch_init.h>
+#include <machine/timer.h>
 #include <mm/init.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
 #include <mm/vma.h>
 #include <sys/config.h>
+#include <sys/debug.h>
 #include <sys/kprintf.h>
 
 int
@@ -49,14 +51,10 @@ main(multiboot_info_t *mbd)
         /* Set up the page frame allocator */
         pfa_init(&mem_limits);
         pfa_report(false);
-#ifdef CONF_DEBUG
-        pfa_test();
-#endif
+        DO_TEST(pfa_test);
         /* Set up the VMA */
         vma_init();
-#ifdef CONF_DEBUG
-        vma_test();
-#endif
+        DO_TEST(vma_test);
         vma_report();
 
         for (;;);
