@@ -50,8 +50,10 @@ kprintf(kprintf_pri_t pri, const char *fmt, ...)
         if (!output_device.puts)
                 return;
 
-        if (pri == PRI_DEBUG && !CONF_DEBUG)
+#ifndef CONF_DEBUG
+        if (pri == PRI_DEBUG)
                 return;
+#endif
 
         va_start (args, fmt);
         ret = vsnprintf(tmp, sizeof(tmp), fmt, args);
