@@ -16,11 +16,14 @@ SECTIONS
 
   .text ALIGN (4096) : AT(ADDR(.text) - 0xC0000000) {
       *(.text)
-      *(.rodata*)
   }
 
   .data ALIGN (4096) : AT(ADDR(.data) - 0xC0000000) {
       *(.data)
+  }
+
+  .rodata ALIGN (4096) : AT(ADDR(.rodata) - 0xC0000000) {
+      *(.rodata*)
   }
 
   .bss : AT(ADDR(.bss) - 0xC0000000) {
