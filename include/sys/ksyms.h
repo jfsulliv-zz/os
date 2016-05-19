@@ -29,39 +29,20 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <multiboot.h>
-#include <machine/arch_init.h>
-#include <machine/timer.h>
-#include <mm/init.h>
-#include <mm/paging.h>
-#include <mm/pfa.h>
-#include <mm/vma.h>
-#include <sys/config.h>
-#include <sys/ksyms.h>
-#include <sys/debug.h>
-#include <sys/kprintf.h>
+#ifndef _SYS_KSYMS_H_
+#define _SYS_KSYMS_H_
+
+/*
+ * include/sys/ksyms.h - Kernel symbol support
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 05/16
+ */
+
+#endif
 
 int
-main(multiboot_info_t *mbd)
-{
-        /* Set up the hardware as needed. */
-        arch_init(mbd);
-        timer_install();
-        /* Set up our initial page mapping */
-        init_paging(&mem_limits);
-        /* Set up the page frame allocator */
-        pfa_init(&mem_limits);
-        pfa_report(false);
-        DO_TEST(pfa_test);
-        /* Set up the VMA */
-        vma_init();
-        DO_TEST(vma_test);
-        vma_report();
-        /* Okay, now we can get some symbols. */
-        ksyms_init();
-        kprintf(0, "Set up ksyms\n");
+ksyms_init(void);
 
-        kprintf(0, "%s\n", ksyms_find_func(0));
-
-        for (;;);
-}
+const char *
+ksyms_find_func(unsigned long addr);
