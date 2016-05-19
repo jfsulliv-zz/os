@@ -33,6 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define _SYS_LIMITS_H_
 
 #include <stdint.h>
+#include <machine/params.h>
 
 #define INT_MIN         (-INT_MAX - 1)
 #define INT_MAX         2147483647
@@ -40,7 +41,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define UINT_MAX        4294967295U
 
 #define LONG_MIN        (-LONG_MAX - 1)
-#if __WORDSIZE == 64
+#if WORD_SIZE == 64
 #define LONG_MAX        9223372036854775807L
 #define ULONG_MAX       18446744073709551615UL
 #else

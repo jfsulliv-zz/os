@@ -41,9 +41,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
 #include <util/list.h>
+#include <machine/params.h>
 
-#define KERN_OFFS 0x00100000
-#define KERN_BASE 0xC0000000
+#define KERN_OFFS 0x00100000UL
 #define PAGE_SHIFT 12
 #define PD_SHIFT   22
 #define PTABS_PER_PD 1024
