@@ -32,6 +32,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _SYS_KSYMS_H_
 #define _SYS_KSYMS_H_
 
+#include <multiboot.h>
+
 /*
  * include/sys/ksyms.h - Kernel symbol support
  *
@@ -39,10 +41,22 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 05/16
  */
 
-#endif
+/* A single ksyms record. */
+typedef struct ksyms_entry {
+        unsigned long addr;
+        const char   *name;
+} ksyms_entry_t;
 
 int
-ksyms_init(void);
+ksyms_init(multiboot_info_t *mbd);
+
+ksyms_entry_t *
+ksyms_find(unsigned long addr);
 
 const char *
 ksyms_find_func(unsigned long addr);
+
+char *
+ksyms_report_eip(unsigned long addr);
+
+#endif

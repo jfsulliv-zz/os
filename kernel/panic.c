@@ -38,7 +38,7 @@ _panic(const char *file, const char *fun, int line, const char *why)
 {
         kprintf(0, "***PANIC***\n");
         kprintf(0, "%s: %s (%s:%d)\n", fun,why,file, line);
-        dump_regs();
+        backtrace(10);
         for(;;);
 }
 
@@ -47,5 +47,6 @@ _bug(const char *file, const char *fun, int line, const char *why)
 {
         kprintf(0, "***BUG***\n");
         kprintf(0, "%s: %s (%s:%d)\n", fun,why,file, line);
+        backtrace(10);
         for(;;);
 }

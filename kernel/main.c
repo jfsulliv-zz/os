@@ -30,6 +30,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <multiboot.h>
+#include <machine/regs.h>
 #include <machine/arch_init.h>
 #include <machine/timer.h>
 #include <mm/init.h>
@@ -58,10 +59,8 @@ main(multiboot_info_t *mbd)
         DO_TEST(vma_test);
         vma_report();
         /* Okay, now we can get some symbols. */
-        ksyms_init();
+        ksyms_init(mbd);
         kprintf(0, "Set up ksyms\n");
-
-        kprintf(0, "%s\n", ksyms_find_func(0));
 
         for (;;);
 }

@@ -31,6 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <machine/regs.h>
 #include <sys/kprintf.h>
+#include <sys/ksyms.h>
 
 void
 dump_regs_from(struct regs *r)
@@ -92,13 +93,18 @@ void
 backtrace(unsigned int max_frames)
 {
         unsigned int *ebp = &max_frames - 2;
+        unsigned int eip;
         unsigned int fr;
         for (fr = 0; fr < max_frames; fr++)
         {
-                unsigned int eip = ebp[1];
+                ksyms_entry_t *ent;
+                if (!ebp)
+                        eip = 0;
+                else
+                        eip = ebp[1];
+                kprintf(0, "%s\n", ksyms_report_eip(eip));
                 if (!eip)
                         break;
                 ebp = (unsigned int *)(ebp[0]);
-                kprintf(0, "0x%08x\n", eip);
         }
 }

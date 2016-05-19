@@ -27,10 +27,15 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
+
+Modifications:
+        * Added mb_find_section, mb_load_section
 */
 
 #ifndef _MULTIBOOT_H_
 #define _MULTIBOOT_H_
+
+#include <sys/elf.h>
 
 /* multiboot.h - the header for Multiboot */
 /* Copyright (C) 1999, 2001  Free Software Foundation, Inc.
@@ -151,5 +156,10 @@ typedef struct memory_map
 } memory_map_t;
 
 #endif /* ! ASM */
+
+int       mb_load_shstrtab(multiboot_info_t *);
+void     *mb_load_section(multiboot_info_t *, const char *);
+Elf_Shdr *mb_find_section(multiboot_info_t *, const char *);
+
 
 #endif
