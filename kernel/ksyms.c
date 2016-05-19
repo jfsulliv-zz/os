@@ -36,6 +36,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/ksyms.h>
 #include <sys/panic.h>
 #include <sys/stdlib.h>
+#include <sys/stdio.h>
 #include <sys/string.h>
 #include <util/list.h>
 #include <util/sort.h>
@@ -79,7 +80,6 @@ static void ksyms_swap(void *va, void *vb)
 static int
 _ksyms_init(void)
 {
-        unsigned long n = 0;
         const Elf_Sym *sym = ksyms_start;
 
         entry_tab = kmalloc(sizeof(ksyms_entry_t) * entry_max, M_KERNEL);
@@ -124,7 +124,7 @@ _ksyms_load(multiboot_info_t *mbd)
         sym_size = mb_find_section(mbd, ".symtab")->sh_size;
         strtab_size = mb_find_section(mbd, ".strtab")->sh_size;
 
-        ksyms_end = (void *)ksyms_start + sym_size;
+        ksyms_end = (Elf_Sym *)((unsigned long)ksyms_start + sym_size);
         kstrtab_end = kstrtab_start + strtab_size;
 
         return 0;
@@ -209,7 +209,7 @@ char *
 ksyms_report_eip(unsigned long addr)
 {
         if (ksyms_broken)
-                return ksyms_broken_str;
+                return (char *)ksyms_broken_str;
         bug_on(!ksyms_initialized, "ksyms used before initialization.");
 
         ksyms_entry_t *ent = ksyms_find(addr);
