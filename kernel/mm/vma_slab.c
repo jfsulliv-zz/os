@@ -128,6 +128,8 @@ slab_cache_ctor(void *p, __attribute__((unused)) size_t sz)
         int i = 0;
         for (i = 0; i < SLAB_NUM_BUCKETS; i++)
                 list_head_init(&cp->slab_map[i]);
+
+        cp->obj_ctor = cp->obj_dtor = NULL;
 }
 
 static void
@@ -203,6 +205,9 @@ slab_ctor(void *p, __attribute__((unused)) size_t sz)
         sp->state  = SLAB_STATE_EMPTY;
         list_head_init(&sp->slab_list);
         list_head_init(&sp->slab_map_list);
+        sp->freep  = NULL;
+        sp->lastp  = NULL;
+        sp->slab_bufs = NULL;
         sp->buf    = NULL;
 }
 
@@ -221,6 +226,7 @@ slab_buf_ctor(void *p, __attribute__((unused)) size_t sz)
         sp->buf = NULL;
         sp->sp = NULL;
         sp->next = NULL;
+        list_head_init(&sp->slab_map_list);
 }
 
 static void *
@@ -758,10 +764,7 @@ kmalloc(unsigned long size, mflags_t flags)
                 return NULL;
 
         ind = next_pow2(size);
-        if (size < PAGE_SIZE)
-                pf_ord = 0;
-        else
-                pf_ord = ind;
+        pf_ord = (ind >= PAGE_SHIFT ? ind - PAGE_SHIFT : 0);
         /* Use the kmalloc_4 slab for 1..4 size allocs */
         if (ind < 2)
                 ind = 2;
