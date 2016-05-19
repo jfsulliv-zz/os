@@ -53,17 +53,8 @@ $(GRUBCFG):
 	echo -e "\t multiboot /boot/"$(OUT) >> $(GRUBCFG)
 	echo "}" >> $(GRUBCFG)
 
-img: include/version.h ksyms.o $(ALL_OBJS)
-	$(LD) $(LDFLAGS) ksyms.o $(ALL_OBJS) -o $(OUT)
-
-ksyms.o: ksyms.bin
-	objcopy --rename-section .data=.rodata -B $(ARCH) -O elf$(BITS)-$(ARCH) -I binary ksyms.bin $@
-
-obj_list.txt: $(ALL_OBJS)
-	printf "%s\n" $(ALL_OBJS) > $@
-
-ksyms.bin: obj_list.txt
-	scripts/gen_syms.sh obj_list.txt > $@
+img: include/version.h $(ALL_OBJS)
+	$(LD) $(LDFLAGS) $(ALL_OBJS) -o $(OUT)
 
 include/version.h:
 	echo "#ifndef __VERSION_H__" >> $@
