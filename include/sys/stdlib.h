@@ -29,25 +29,43 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _SYS_STDIO_H_
-#define _SYS_STDIO_H_
+#ifndef _SYS_STDLIB_H_
+#define _SYS_STDLIB_H_
 
-/*
- * sys/stdio.h
- *
- * James Sullivan <sullivan.james.f@gmail.com>
- * 04/16
- */
+static inline int isdigit(int c)
+{
+        return (c >= '0' && c < '9');
+}
 
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
+static inline int isspace(int c)
+{
+        return (c == ' ' || c == '\r' || c == '\n');
+}
 
-int snprintf(char *str, size_t size, const char *format, ...);
-int slprintf(char *str, size_t size, const char *format, ...);
-int vsnprintf(char *str, size_t size, const char *format, va_list args);
-int vslprintf(char *str, size_t size, const char *format, va_list args);
+static inline int isascii(int c)
+{
+        return (c >= 0 && c < 128);
+}
 
-int banner(char *dest, size_t sz, char border, const char *fmt, ...);
+static inline int isalpha(int c)
+{
+        return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
+}
 
-#endif /* _SYS_STDIO_H_ */
+static inline int isupper(int c)
+{
+        return (c >= 'A' && c <= 'Z');
+}
+
+static inline int ord(char c)
+{
+        return (int)c;
+}
+
+
+int atoi(const char *nptr);
+long atol(const char *nptr);
+long int strtol(const char *nptr, char **endptr, int base);
+long unsigned int strtoul(const char *nptr, char **endptr, int base);
+
+#endif

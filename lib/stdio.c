@@ -40,6 +40,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/stdio.h>
+#include <sys/stdlib.h>
 #include <sys/string.h>
 #include <util/cmp.h>
 

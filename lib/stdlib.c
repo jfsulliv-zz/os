@@ -29,25 +29,15 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _SYS_STDIO_H_
-#define _SYS_STDIO_H_
-
-/*
- * sys/stdio.h
- *
- * James Sullivan <sullivan.james.f@gmail.com>
- * 04/16
- */
-
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stddef.h>
+#include <sys/stdlib.h>
 
-int snprintf(char *str, size_t size, const char *format, ...);
-int slprintf(char *str, size_t size, const char *format, ...);
-int vsnprintf(char *str, size_t size, const char *format, va_list args);
-int vslprintf(char *str, size_t size, const char *format, va_list args);
+int atoi(const char *nptr)
+{
+        return strtol(nptr, NULL, 10);
+}
 
-int banner(char *dest, size_t sz, char border, const char *fmt, ...);
-
-#endif /* _SYS_STDIO_H_ */
+long atol(const char *nptr)
+{
+        return strtol(nptr, NULL, 10);
+}

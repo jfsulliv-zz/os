@@ -29,25 +29,23 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _SYS_STDIO_H_
-#define _SYS_STDIO_H_
+#ifndef _SYS_LIMITS_H_
+#define _SYS_LIMITS_H_
 
-/*
- * sys/stdio.h
- *
- * James Sullivan <sullivan.james.f@gmail.com>
- * 04/16
- */
+#include <stdint.h>
 
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
+#define INT_MIN         (-INT_MAX - 1)
+#define INT_MAX         2147483647
 
-int snprintf(char *str, size_t size, const char *format, ...);
-int slprintf(char *str, size_t size, const char *format, ...);
-int vsnprintf(char *str, size_t size, const char *format, va_list args);
-int vslprintf(char *str, size_t size, const char *format, va_list args);
+#define UINT_MAX        4294967295U
 
-int banner(char *dest, size_t sz, char border, const char *fmt, ...);
+#define LONG_MIN        (-LONG_MAX - 1)
+#if __WORDSIZE == 64
+#define LONG_MAX        9223372036854775807L
+#define ULONG_MAX       18446744073709551615UL
+#else
+#define LONG_MAX        2147483647L
+#define ULONG_MAX       4294967295UL
+#endif
 
-#endif /* _SYS_STDIO_H_ */
+#endif
