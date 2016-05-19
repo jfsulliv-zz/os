@@ -761,7 +761,7 @@ kmalloc(unsigned long size, mflags_t flags)
         if (size < PAGE_SIZE)
                 pf_ord = 0;
         else
-                pf_ord = next_pow2(size / PAGE_SIZE);
+                pf_ord = ind;
         /* Use the kmalloc_4 slab for 1..4 size allocs */
         if (ind < 2)
                 ind = 2;
@@ -795,7 +795,8 @@ kfree(void *addr)
                 return;
 
         bp = find_kmalloc_record(addr);
-        bug_on(!bp, "No previous record found");
+        if (!bp)
+                return;
 
         if (bp->ind >= vma.num_kmalloc_caches) {
                 free_pages(addr, bp->order);
@@ -809,13 +810,30 @@ kfree(void *addr)
         slab_cache_free(&vma.kmalloc_record_cache, bp);
 }
 
-void
+/* TODO: Be smarter about this */
+void *
 krealloc(void *addr, unsigned long size, mflags_t flags)
 {
-        if (!addr)
-                return;
+        kmalloc_record_t *bp;
+        void *ret;
+        unsigned long to_copy;
 
-        panic("TODO");
+        if (!addr)
+                return NULL;
+
+        bp = find_kmalloc_record(addr);
+        if (!bp)
+                return NULL;
+        to_copy = MIN(((unsigned long)PAGE_SIZE << bp->order), size);
+
+        ret = kmalloc(size, flags);
+        if (!ret)
+                return NULL;
+
+        memcpy(ret, addr, to_copy);
+        kfree(addr);
+
+        return ret;
 }
 
 static void
@@ -946,11 +964,16 @@ vma_test_kmalloc(void)
         int i = -1;
         unsigned int j = -1;
         int n = 0;
-        for (j = 0; j < 15; j++) {
+        for (j = 0; j < 16; j++) {
                 for (i = 0; i < 100; i++) {
-                        p = kmalloc(1 << j, 0);
+                        p = kmalloc(1 << j, M_KERNEL);
                         if (p) {
-                                *(char *)p = 'h'; // Make sure we can read/write
+                                memset(p, 0, 1<<j);
+                                void *p2 = krealloc(p, 1<<j, M_KERNEL);
+                                if (p2) {
+                                        p = p2;
+                                        memset(p, 1, 1<<j);
+                                }
                                 kfree(p);
                                 n++;
                         }

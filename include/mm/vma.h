@@ -46,7 +46,7 @@ vma_init(void);
 
 void *kmalloc (unsigned long size, mflags_t flags);
 void  kfree   (void *addr);
-void  krealloc(void *addr, unsigned long size, mflags_t flags);
+void *krealloc(void *addr, unsigned long size, mflags_t flags);
 
 void
 vma_report(void);
