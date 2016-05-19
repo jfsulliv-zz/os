@@ -60,7 +60,10 @@ main(multiboot_info_t *mbd)
         vma_report();
         /* Okay, now we can get some symbols. */
         ksyms_init(mbd);
-        kprintf(0, "Set up ksyms\n");
+        kprintf(0, "Initialized kernel symbols\n");
+        /* Set up the process tables. */
+        proc_system_init();
+        kprintf(0, "Initialized process tables\n");
 
         for (;;);
 }
