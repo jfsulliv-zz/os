@@ -222,7 +222,6 @@ is_highmem(memlimits_t *lim, unsigned long paddr)
 }
 
 extern memlimits_t mem_limits;
-extern pgdir_t *proc0_pgdir_p;
 
 /* Arch specific */
 int pg_map(void *vaddr, unsigned long paddr, pgflags_t flags);
