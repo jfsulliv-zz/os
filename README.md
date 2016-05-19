@@ -7,6 +7,11 @@ project, and I work on it when the mood strikes.
 
 So far, there is only support for x86.
 
+### Features
+- It boots!
+- Paging
+- Virtual memory allocator (slab)
+- Debugging support (stack tracing, function name resolution, etc)
 ### TODO
 - Filesystem abstraction layer and some initial FS implementations
 - Device abstraction layer, support for some hardware
