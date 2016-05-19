@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-scripts/add_licences.sh
+scripts/add_licenses.sh
