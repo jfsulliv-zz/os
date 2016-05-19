@@ -195,7 +195,8 @@ ksyms_find_func(unsigned long addr)
 {
         if (ksyms_broken)
                 return ksyms_broken_str;
-        bug_on(!ksyms_initialized, "ksyms used before initialization.");
+        if (!ksyms_initialized)
+                return ksyms_broken_str;
 
         ksyms_entry_t *ent = ksyms_find(addr);
         if (ent)
@@ -210,7 +211,8 @@ ksyms_report_eip(unsigned long addr)
 {
         if (ksyms_broken)
                 return (char *)ksyms_broken_str;
-        bug_on(!ksyms_initialized, "ksyms used before initialization.");
+        if (!ksyms_initialized)
+                return (char *)ksyms_broken_str;
 
         ksyms_entry_t *ent = ksyms_find(addr);
         if (ent) {
