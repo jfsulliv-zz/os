@@ -47,6 +47,24 @@ size_t strlen(const char *str)
 	return (p - 1) - str;
 }
 
+int strcmp(const char *a, const char *b)
+{
+        while (*a && *b)
+        {
+                if (*a == *b) {
+                        a++;
+                        b++;
+                } else if (*a < *b) {
+                        return -1;
+                } else {
+                        return 1;
+                }
+        }
+        if (*a == '\0')
+                return (*b == '\0' ? 0 : 1);
+        return -1;
+}
+
 char *strcpy(char *dst, const char *from)
 {
 	char *orig_dst = dst;

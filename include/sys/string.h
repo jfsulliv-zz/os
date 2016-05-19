@@ -44,6 +44,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 size_t strlen(const char *str);
 
+int strcmp(const char *a, const char *b);
+
 char *strcpy(char *dst, const char *from);
 char *strncpy(char *dst, const char *from, size_t n);
 char *strlcpy(char *dst, const char *from, size_t n);
