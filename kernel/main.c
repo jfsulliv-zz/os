@@ -42,8 +42,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/debug.h>
 #include <sys/kprintf.h>
 
-int create_init(void);
-
 int
 main(multiboot_info_t *mbd)
 {
