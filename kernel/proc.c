@@ -178,7 +178,7 @@ next_pid(void)
         pid_t ret;
         for (ret = last_pid+1; ret != last_pid+1; ret++)
         {
-                if (ret == pid_max)
+                if (ret > pid_max)
                         ret = 0;
                 if (proc_table[ret] == NULL) {
                         last_pid = ret;
