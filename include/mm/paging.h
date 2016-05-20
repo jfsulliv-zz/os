@@ -231,4 +231,8 @@ int pg_unmap(void *vaddr);
 int pg_unmap_pages(void *vaddr, size_t npg);
 unsigned long pg_get_paddr(void *vaddr);
 
+int copy_pgdir(pgdir_t *to, pgdir_t *from);
+
+pgdir_t *alloc_pgdir(void);
+
 #endif /* _MM_PAGING_H_ */

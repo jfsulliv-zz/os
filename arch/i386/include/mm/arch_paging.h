@@ -52,6 +52,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define PTAB_SIZE (1 << PAGE_SHIFT)
 #define PDIR_SIZE (1 << PD_SHIFT)
 #define PGENT_ADDR(x)   (x & ~(PAGE_SIZE - 1))
+#define PGENT_FLAGS(x)  (x &  (PAGE_SIZE - 1))
 
 #define PFN_UP(x)       (((x) + PAGE_SIZE-1) >> PAGE_SHIFT)
 #define PFN_DOWN(x)     ((x) >> PAGE_SHIFT)

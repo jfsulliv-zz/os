@@ -58,6 +58,8 @@ typedef unsigned int pgflags_t;
 #define PAGE_FLAGS_MASK (GENMASK(11, 0))
 #define PAGE_ADDR_MASK  (~PAGE_FLAGS_MASK)
 
+#define PAGE_FLAGS_BAD(x) ((x) & (~PAGE_FLAGS_MASK))
+
 #define PAGE_TAB  (_PAGE_PRESENT | _PAGE_USER | _PAGE_RW | \
                    _PAGE_ACCESSED | _PAGE_DIRTY)
 #define KPAGE_TAB (_PAGE_PRESENT | _PAGE_RW | _PAGE_ACCESSED | \
