@@ -146,9 +146,9 @@ make_child_process(proc_t *par)
 {
         if (!par)
                 return NULL;
-        bug_on(!par, "NULL parent process");
 
-        proc_t *p = _alloc_process(); if (!p)
+        proc_t *p = _alloc_process();
+        if (!p)
                 return NULL;
         p->id.ppid = par->id.pid;
         list_add(&par->control.children, &p->control.pr_list);
