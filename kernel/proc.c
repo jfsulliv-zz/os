@@ -30,6 +30,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <mm/vma.h>
+#include <mm/vmman.h>
 #include <sys/string.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
@@ -92,6 +93,7 @@ proc_system_init_initproc(void)
         init_proc.id.pid = 1;
         init_proc.id.ppid = 0;
         init_proc.control.vm.pgd = &proc0_pdir;
+        proc_table[1] = &init_proc;
 }
 
 static void
@@ -108,11 +110,9 @@ proc_system_init_alloc(void)
 void
 proc_system_init(void)
 {
+        proc_system_init_alloc();
         proc_system_init_table();
         proc_system_init_initproc();
-        proc_system_init_alloc();
-
-        proc_table[1] = &init_proc;
 }
 
 static proc_t *
@@ -127,10 +127,21 @@ _alloc_process(void)
         if (p)
                 proc_init(p);
 #endif
-        if (p && p->id.pid == 0) {
-                panic("TODO: Handle running out of PIDs\n");
+        if (p) {
+                /* Check for errors */
+                if (p->id.pid == 0) /* Out of PIDs */
+                        goto free_proc;
+                else if (p->control.vm.pgd == NULL) /* Out of memory */
+                        goto free_proc;
         }
         return p;
+free_proc:
+#ifdef CONF_VMA_SLAB
+        slab_cache_free(proc_alloc_cache, p);
+#else
+        kfree(p);
+#endif
+        return NULL;
 }
 
 proc_t *
@@ -141,8 +152,16 @@ find_process(pid_t pid)
         return proc_table[pid];
 }
 
+static void
+_make_child(proc_t *par, proc_t *p)
+{
+        p->id.ppid = par->id.pid;
+        copy_vmman(&p->control.vm, &par->control.vm);
+        list_add(&par->control.children, &p->control.pr_list);
+}
+
 proc_t *
-make_child_process(proc_t *par)
+copy_process(proc_t *par, fork_req_t *req)
 {
         if (!par)
                 return NULL;
@@ -150,8 +169,7 @@ make_child_process(proc_t *par)
         proc_t *p = _alloc_process();
         if (!p)
                 return NULL;
-        p->id.ppid = par->id.pid;
-        list_add(&par->control.children, &p->control.pr_list);
+        _make_child(par, p);
         return p;
 }
 
@@ -163,8 +181,8 @@ free_process(proc_t *p)
         bug_on(p->state.sched_state != PROC_STATE_TERMINATED,
                "Process was freed while in use.");
 #ifdef CONF_VMA_SLAB
-        slab_cache_free(proc_alloc_cache, p);
         /* proc_deinit is called during allocation */
+        slab_cache_free(proc_alloc_cache, p);
 #else
         proc_deinit(p);
         kfree(p);
@@ -197,6 +215,7 @@ proc_init(proc_t *p)
         p->id.pid  = next_pid();
         p->state   = PROC_STATE_INIT;
         p->control = PROC_CONTROL_INIT(p->control);
+        vmman_init(&p->control.vm);
 }
 
 void

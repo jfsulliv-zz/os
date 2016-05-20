@@ -149,8 +149,12 @@ proc_system_init(void);
 proc_t *
 find_process(pid_t);
 
+typedef struct {
+        int             fr_flags;
+} fork_req_t;
+
 proc_t *
-make_child_process(proc_t *);
+copy_process(proc_t *, fork_req_t *);
 
 void
 free_process(proc_t *);

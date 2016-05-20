@@ -31,15 +31,24 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <mm/paging.h>
 #include <mm/vmman.h>
+#include <sys/errno.h>
 #include <sys/panic.h>
 
-static vmman_t proc0_vmman;
+vmman_t proc0_vmman;
 
-void
-vmman_init(vmman_t *vmman, pgdir_t *pgd)
+int
+vmman_init(vmman_t *vmman)
 {
-        if (!vmman || !pgd) {
-                bug("NULL parameters");
-        }
-        vmman->pgd = pgd;
+        if (!vmman)
+                return EINVAL;
+        vmman->pgd = alloc_pgdir();
+        return (vmman->pgd == NULL ? ENOMEM : 0);
+}
+
+int
+copy_vmman(vmman_t *to, vmman_t *from)
+{
+        if (!to || !from)
+                return EINVAL;
+        return copy_pgdir(to->pgd, from->pgd);
 }

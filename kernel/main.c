@@ -42,6 +42,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/debug.h>
 #include <sys/kprintf.h>
 
+int create_init(void);
+
 int
 main(multiboot_info_t *mbd)
 {
@@ -61,9 +63,9 @@ main(multiboot_info_t *mbd)
         /* Okay, now we can get some symbols. */
         ksyms_init(mbd);
         kprintf(0, "Initialized kernel symbols\n");
-        /* Set up the process tables. */
+        /* Set up the process tables and pid 1 */
         proc_system_init();
-        kprintf(0, "Initialized process tables\n");
+        kprintf(0, "Initialized process tables, init process\n");
 
         for (;;);
 }

@@ -45,7 +45,11 @@ typedef struct {
         pgdir_t *pgd;
 } vmman_t;
 
-void vmman_init(vmman_t *, pgdir_t *);
+int
+vmman_init(vmman_t *vmman);
+
+int
+copy_vmman(vmman_t *to, vmman_t *from);
 
 extern vmman_t proc0_vmman;
 
