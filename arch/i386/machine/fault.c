@@ -56,6 +56,6 @@ handle_fault(struct regs *r, unsigned long fault_addr)
 void
 pagefault_handler(struct regs *r)
 {
-        uint32_t fault_addr = load_cr2();
+        uint32_t fault_addr = get_cr2();
         handle_fault(r, fault_addr);
 }

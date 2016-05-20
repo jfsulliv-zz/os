@@ -44,13 +44,21 @@ struct regs
 };
 
 static inline unsigned int
-load_cr2(void)
+get_cr2(void)
 {
         unsigned int ret;
         __asm__ __volatile__(
                 "mov %%cr2, %0"
                 : "=a" (ret));
         return ret;
+}
+
+static inline void
+set_cr3(unsigned long val)
+{
+        __asm__ __volatile__(
+                "mov %0, %%cr3"
+                : "+m" (val));
 }
 
 void dump_regs_from(struct regs *r);
