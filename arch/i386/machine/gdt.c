@@ -41,6 +41,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/string.h>
 #include <stdint.h>
 
+struct gdt_entry gdt[NUM_GDT_ENTRIES];
+struct gdt_ptr   gp;
+
 static struct gdt_entry gdte_null = {
         .limit_low = 0,
         .base_low  = 0,

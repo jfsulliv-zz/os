@@ -5,20 +5,6 @@ extern kernel_start
 extern kernel_end
 
 %define RELOC(x)        ((x)-(KERN_BASE))
-
-%macro PAGE_ROUND 1
-        mov ecx, %1
-        and ecx, 0x0fff
-        jz  .page_round_done
-        mov ecx, %1
-        add ecx, 0x1000
-        and ecx, ~0x0fff
-        jmp .page_round_out
-.page_round_done:
-        mov ecx, %1
-.page_round_out:
-%endmacro
-
 %define SIZE_IN_PAGES(x) ((x) >> (12))
 
 ; Declare constants used for creating a multiboot header.
@@ -41,9 +27,7 @@ align 4
         dd CHECKSUM
 ; The kernel address space corresponds roughly to its ELF layout.
 ;
-; [tables] | text | data | bss [stack]
-;                   ^
-;           PAGE_ROUND(kernel_end)
+; text | data | bss [stack] | [tables]
 ;
 section .text
 global _start
@@ -65,7 +49,7 @@ _start:
         jns  $-0x12
 
         ; Set the page directory pointer
-        mov ecx, RELOC(proc0_pdir)
+        mov ecx, RELOC(init_pgd)
         mov cr3, ecx
 
         ; Enable paging
@@ -80,7 +64,7 @@ _start:
 _start_hh:
         ;;; First of all, we don't need the ID map any more, so
         ;;; let's get rid of it. 
-        mov dword [RELOC(proc0_pdir)],   0x0
+        mov dword [RELOC(init_pgd)],   0x0
         invlpg [0x0]
         ;;; Bootstrap the stack.
         mov esp, STACK_TOP
@@ -121,16 +105,16 @@ tss_flush:
 
 section .tables
 align 0x1000
-global proc0_pdir
+global init_pgd
 global pg0
-proc0_pdir:
+init_pgd:
         ; The first 4MB will be ID mapped.
         dd 0x00102007
         times (UNUM_PAGETABS-1) dd 0x0
         ; Duplicate the kern map at the start of the kernel address space
         dd 0x00102007
         times (KNUM_PAGETABS-1) dd 0x0
-proc0_pdir_end:
+init_pgd_end:
 ; These will be dynamically filled for the identity mapping
 pg0:
         times 4096 db 0x0

@@ -97,7 +97,6 @@ backtrace(unsigned int max_frames)
         unsigned int fr;
         for (fr = 0; fr < max_frames; fr++)
         {
-                ksyms_entry_t *ent;
                 if (!ebp)
                         eip = 0;
                 else

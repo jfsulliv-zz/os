@@ -29,41 +29,21 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_REGS_H_
-#define _MACHINE_REGS_H_
+#ifndef _MACHINE_PARAMS_H_
+#define _MACHINE_PARAMS_H_
 
-#include <stdint.h>
+/*
+ * machine/params.h
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 04/16
+ */
 
-/* Register context */
-struct regs
-{
-        unsigned int gs, fs, es, ds;
-        unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-        unsigned int int_no, err_code;
-        unsigned int eip, cs, eflags, useresp, ss;
-};
+#define WORD_SIZE 64
 
-static inline unsigned int
-get_cr2(void)
-{
-        unsigned int ret;
-        __asm__ __volatile__(
-                "mov %%cr2, %0"
-                : "=a" (ret));
-        return ret;
-}
+#define STACK_SZ 32768
 
-static inline void
-set_cr3(unsigned long val)
-{
-        __asm__ __volatile__(
-                "mov %0, %%cr3"
-                : "=r" (val));
-}
-
-void dump_regs_from(struct regs *r);
-void dump_regs(void);
-void get_regs(struct regs *to);
-void backtrace(unsigned int max);
+#define KERN_OFFS 0x00100000ULL
+#define KERN_BASE 0xffffffff80000000ULL
 
 #endif

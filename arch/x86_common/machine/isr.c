@@ -29,58 +29,27 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <mm/paging.h>
-#include <mm/reserve.h>
-#include <sys/panic.h>
+#include <machine/idt.h>
+#include <machine/irq.h>
+#include <sys/kprintf.h>
+#include <machine/pic.h>
+#include <machine/regs.h>
 
-bool reserve_enabled = true;
-
-bool
-can_reserve(void)
+void isr_handler(struct regs *r)
 {
-        return reserve_enabled;
-}
+        if (r->int_no < INT_EXCEPTION_LIMIT) {
+                kprintf(0, "%s Exception. System Halted!\n",
+                        exception_messages[r->int_no]);
+                dump_regs_from(r);
+                for (;;);
+        } else {
+                void (*handler)(struct regs *r);
+                int irq = r->int_no - INT_IRQ_BASE;
 
-void
-disable_reserve(void)
-{
-        reserve_enabled = false;
-}
-
-unsigned long
-reserve_low_pages(memlimits_t *lim, unsigned int num)
-{
-        unsigned long ret;
-
-        bug_on(!lim, "NULL parameter");
-        bug_on(num + lim->low_pfn >= lim->high_pfn,
-               "Low memory pool exhausted");
-        bug_on(!can_reserve(), "Page reserved after PFA usage");
-
-        if (num == 0)
-                return 0;
-
-        ret = paddr_of(lim->low_pfn);
-        lim->low_pfn += num;
-        return ret;
-}
-
-unsigned long
-reserve_high_pages(memlimits_t *lim, unsigned int num)
-{
-        unsigned long ret;
-
-        bug_on(!lim, "NULL parameter");
-        bug_on(num + lim->high_pfn >= lim->max_pfn,
-               "High memory pool exhausted");
-        bug_on(!can_reserve(), "Page reserved after PFA usage");
-
-        if (num == 0)
-                return 0;
-
-        ret = paddr_of(lim->high_pfn);
-        lim->high_pfn += num;
-        return ret;
+                handler = irq_routines[irq];
+                if (handler) {
+                        handler(r);
+                }
+                pic_send_eoi(irq);
+        }
 }

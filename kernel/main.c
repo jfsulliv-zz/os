@@ -33,14 +33,15 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/regs.h>
 #include <machine/arch_init.h>
 #include <machine/timer.h>
-#include <mm/init.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
+#include <mm/pmm.h>
 #include <mm/vma.h>
 #include <sys/config.h>
-#include <sys/ksyms.h>
 #include <sys/debug.h>
+#include <sys/ksyms.h>
 #include <sys/kprintf.h>
+#include <sys/proc.h>
 
 int
 main(multiboot_info_t *mbd)
@@ -48,8 +49,8 @@ main(multiboot_info_t *mbd)
         /* Set up the hardware as needed. */
         arch_init(mbd);
         timer_install();
-        /* Set up our initial page mapping */
-        init_paging(&mem_limits);
+        /* Set up the pmm subsystem */
+        pmm_init(&mem_limits);
         /* Set up the page frame allocator */
         pfa_init(&mem_limits);
         pfa_report(false);

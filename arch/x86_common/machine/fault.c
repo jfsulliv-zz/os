@@ -29,41 +29,32 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_REGS_H_
-#define _MACHINE_REGS_H_
+#include <machine/regs.h>
+#include <mm/paging.h>
+#include <mm/pfa.h>
+#include <sys/kprintf.h>
+#include <sys/panic.h>
 
-#include <stdint.h>
-
-/* Register context */
-struct regs
+static inline bool
+is_kernel_fault(unsigned long addr)
 {
-        unsigned int gs, fs, es, ds;
-        unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-        unsigned int int_no, err_code;
-        unsigned int eip, cs, eflags, useresp, ss;
-};
-
-static inline unsigned int
-get_cr2(void)
-{
-        unsigned int ret;
-        __asm__ __volatile__(
-                "mov %%cr2, %0"
-                : "=a" (ret));
-        return ret;
+        return (addr < KERN_BASE);
 }
 
-static inline void
-set_cr3(unsigned long val)
+static void
+handle_fault(struct regs *r, paddr_t fault_addr)
 {
-        __asm__ __volatile__(
-                "mov %0, %%cr3"
-                : "=r" (val));
+        kprintf(0, "Page fault at 0x%08x\n", fault_addr);
+        if (is_kernel_fault(fault_addr)) {
+                panic("TODO - kernel faults");
+        } else {
+                panic("TODO - user faults");
+        }
 }
 
-void dump_regs_from(struct regs *r);
-void dump_regs(void);
-void get_regs(struct regs *to);
-void backtrace(unsigned int max);
-
-#endif
+void
+pagefault_handler(struct regs *r)
+{
+        uint32_t fault_addr = get_cr2();
+        handle_fault(r, fault_addr);
+}

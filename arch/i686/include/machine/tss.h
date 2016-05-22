@@ -29,41 +29,43 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_REGS_H_
-#define _MACHINE_REGS_H_
+#ifndef _MACHINE_TSS_H_
+#define _MACHINE_TSS_H_
 
-#include <stdint.h>
+#include <machine/gdt.h>
 
-/* Register context */
-struct regs
-{
-        unsigned int gs, fs, es, ds;
-        unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-        unsigned int int_no, err_code;
-        unsigned int eip, cs, eflags, useresp, ss;
-};
+struct tss_entry {
+        uint64_t prev_tss;
+        uint64_t rsp0;
+        uint64_t ss0;
+        uint64_t rsp1;
+        uint64_t ss1;
+        uint64_t rsp2;
+        uint64_t ss2;
+        uint64_t cr3;
+        uint64_t rip;
+        uint64_t eflags;
+        uint64_t rax;
+        uint64_t rcx;
+        uint64_t rdx;
+        uint64_t rbx;
+        uint64_t rsp;
+        uint64_t rbp;
+        uint64_t rsi;
+        uint64_t rdi;
+        uint64_t es;
+        uint64_t cs;
+        uint64_t ss;
+        uint64_t ds;
+        uint64_t fs;
+        uint64_t gs;
+        uint64_t ldt;
+        uint16_t trap;
+        uint16_t iomap_base;
+} __attribute__((packed));
 
-static inline unsigned int
-get_cr2(void)
-{
-        unsigned int ret;
-        __asm__ __volatile__(
-                "mov %%cr2, %0"
-                : "=a" (ret));
-        return ret;
-}
-
-static inline void
-set_cr3(unsigned long val)
-{
-        __asm__ __volatile__(
-                "mov %0, %%cr3"
-                : "=r" (val));
-}
-
-void dump_regs_from(struct regs *r);
-void dump_regs(void);
-void get_regs(struct regs *to);
-void backtrace(unsigned int max);
+void tss_setup_gdte(struct gdt_entry *gdte_tss);
+void tss_install(void);
+void set_kernel_stack(uint64_t stack);
 
 #endif

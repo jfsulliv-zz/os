@@ -40,6 +40,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <machine/system.h>
 
+struct idt_entry idt[NUM_IDT_ENTRIES];
+struct idt_ptr   idtp;
+
 extern void idt_flush(unsigned int);
 
 void (*idt_exception_handlers[INT_EXCEPTION_NUM])(void) = {
@@ -84,7 +87,7 @@ const char *exception_messages[INT_EXCEPTION_LIMIT] = {
         "Reserved"
 };
 
-void idt_set_gate(unsigned char num, unsigned int base, unsigned short sel,
+void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel,
                 unsigned char flags)
 {
         /* Set base address */
@@ -102,18 +105,18 @@ void idt_install_exception_handlers(void)
         int i;
         for (i = INT_EXCEPTION_BASE; i < INT_EXCEPTION_LIMIT; i++)
         {
-                idt_set_gate(i, (unsigned int)idt_exception_handlers[i],
+                idt_set_gate(i, (unsigned long)idt_exception_handlers[i],
                              0x08, IDT_32_INTERRUPT);
         }
 }
 
 void idt_install(void)
 {
-        idtp.base = (unsigned int)&idt;
+        idtp.base = (unsigned long)&idt;
         idtp.limit = sizeof(struct idt_entry) * NUM_IDT_ENTRIES;
 
         idt_install_exception_handlers();
 
-        idt_flush((unsigned int)&idtp);
+        idt_flush((unsigned long)&idtp);
 }
 

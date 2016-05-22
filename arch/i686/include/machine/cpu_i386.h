@@ -29,41 +29,36 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_REGS_H_
-#define _MACHINE_REGS_H_
+#ifndef __CPU_I686_H__
+#define __CPU_I686_H__
 
-#include <stdint.h>
+#include <machine/gdt.h>
+#include <machine/idt.h>
 
-/* Register context */
-struct regs
-{
-        unsigned int gs, fs, es, ds;
-        unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-        unsigned int int_no, err_code;
-        unsigned int eip, cs, eflags, useresp, ss;
+/*
+ * machine/cpu_i686.h
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 08/15
+ */
+
+typedef struct {
+        char manufacturer_string[13];
+        int max_basic_input_val;
+        int max_ext_input_val;
+        int features_ecx, features_edx;
+        int ext_features_ecx, ext_features_edx;
+        char stepping, model, family, type;
+        char cache_line_size, logical_processors, lapic_id;
+        char cpu_brand[49];
+} cpuid_t;
+
+struct arch_cpu {
+        cpuid_t cpuid;
+        struct gdt_entry gdt[NUM_GDT_ENTRIES];
+        struct gdt_ptr   gp;
+        struct idt_entry idt[NUM_IDT_ENTRIES];
+        struct idt_ptr   idtp;
 };
-
-static inline unsigned int
-get_cr2(void)
-{
-        unsigned int ret;
-        __asm__ __volatile__(
-                "mov %%cr2, %0"
-                : "=a" (ret));
-        return ret;
-}
-
-static inline void
-set_cr3(unsigned long val)
-{
-        __asm__ __volatile__(
-                "mov %0, %%cr3"
-                : "=r" (val));
-}
-
-void dump_regs_from(struct regs *r);
-void dump_regs(void);
-void get_regs(struct regs *to);
-void backtrace(unsigned int max);
 
 #endif

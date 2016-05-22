@@ -56,17 +56,17 @@ typedef struct {
         struct list_head cache_list;
         /* These contain slab and slab_buf objects for out-of-band
          * slab tracking. */
-        slab_cache_t slab_cache;
-        slab_cache_t slab_buf_cache;
+        mem_cache_t mem_cache;
+        mem_cache_t slab_buf_cache;
         /* Caches of caches! */
-        slab_cache_t cache_cache;
+        mem_cache_t cache_cache;
         /* A fixed list of caches for generic allocations. */
-        slab_cache_t *kmalloc_caches;
+        mem_cache_t *kmalloc_caches;
         size_t num_kmalloc_caches;
         /* A cache for retaining our kmalloc_record records. */
-        slab_cache_t kmalloc_record_cache;
+        mem_cache_t kmalloc_record_cache;
         /* We only use this to attach a number to big kmalloc usage. */
-        slab_cache_t kmalloc_big_cache;
+        mem_cache_t kmalloc_big_cache;
 
         struct list_head *reap_scanh; /* Where to start reaping from */
 } vma_t;
@@ -114,9 +114,9 @@ struct slab_buf {
 };
 
 static void
-slab_cache_ctor(void *p, __attribute__((unused)) size_t sz)
+mem_cache_ctor(void *p, __attribute__((unused)) size_t sz)
 {
-        slab_cache_t *cp = (slab_cache_t *)p;
+        mem_cache_t *cp = (mem_cache_t *)p;
         cp->refct = 0;
         cp->grown = 0;
         cp->wastage = 0;
@@ -133,9 +133,9 @@ slab_cache_ctor(void *p, __attribute__((unused)) size_t sz)
 }
 
 static void
-slab_cache_dtor(void *p, __attribute__((unused)) size_t sz)
+mem_cache_dtor(void *p, __attribute__((unused)) size_t sz)
 {
-        slab_cache_t *cp = (slab_cache_t *)p;
+        mem_cache_t *cp = (mem_cache_t *)p;
         bug_on(!list_empty(&cp->slabs_full), "Cache freed in use");
         bug_on(!list_empty(&cp->slabs_partial), "Cache freed in use");
         bzero(cp->name, CACHE_NAMELEN+1);
@@ -143,14 +143,14 @@ slab_cache_dtor(void *p, __attribute__((unused)) size_t sz)
 }
 
 static struct list_head *
-slab_bucket(slab_cache_t *cp, void *vaddr)
+slab_bucket(mem_cache_t *cp, void *vaddr)
 {
         uint32_t h = jenkins_hash32(&vaddr, sizeof(void *), 0xfeedbad);
         return &cp->slab_map[h % SLAB_NUM_BUCKETS];
 }
 
 static void
-add_to_slab_map(slab_cache_t *cp, slab_buf_t *bp)
+add_to_slab_map(mem_cache_t *cp, slab_buf_t *bp)
 {
         struct list_head *m = slab_bucket(cp, bp->buf);
         list_add(m, &bp->slab_map_list);
@@ -158,7 +158,7 @@ add_to_slab_map(slab_cache_t *cp, slab_buf_t *bp)
 
 /* Assumes that the cache stores slab data out-of-band (SLABOFF) */
 static slab_buf_t *
-find_slab_buf_off(slab_cache_t *cp, void *vaddr)
+find_slab_buf_off(mem_cache_t *cp, void *vaddr)
 {
         slab_buf_t *bp, *n;
         struct list_head *m = slab_bucket(cp, vaddr);
@@ -174,7 +174,7 @@ find_slab_buf_off(slab_cache_t *cp, void *vaddr)
 
 /* Try to find the buffer control object for the given vaddr. */
 static slab_buf_t *
-find_slab_buf(slab_cache_t *cp, void *vaddr)
+find_slab_buf(mem_cache_t *cp, void *vaddr)
 {
         if (cp->flags & SLAB_CACHE_SLABOFF) {
                 /* Here we need to look up in the cache's hashtable. */
@@ -230,7 +230,7 @@ slab_buf_ctor(void *p, __attribute__((unused)) size_t sz)
 }
 
 static void *
-slab_data(slab_cache_t *cp, slab_t *sp)
+slab_data(mem_cache_t *cp, slab_t *sp)
 {
         if (cp->flags & SLAB_CACHE_SLABOFF) {
                 return sp->buf;
@@ -260,7 +260,7 @@ slab_data(slab_cache_t *cp, slab_t *sp)
          NULL, NULL                                             \
 }
 
-static slab_cache_t malloc_caches[] = {
+static mem_cache_t malloc_caches[] = {
         KMALLOC_CACHE(4),
         KMALLOC_CACHE(8),
         KMALLOC_CACHE(16),
@@ -335,12 +335,12 @@ static vma_t vma = {
         .num_caches         = 0,
         .cache_list         = LIST_HEAD_INIT(vma.cache_list),
         .kmalloc_caches     = malloc_caches,
-        .num_kmalloc_caches = sizeof(malloc_caches) / sizeof(slab_cache_t),
+        .num_kmalloc_caches = sizeof(malloc_caches) / sizeof(mem_cache_t),
         .reap_scanh         = NULL
 };
 
 static void
-slab_add_cache(slab_cache_t *cp)
+slab_add_cache(mem_cache_t *cp)
 {
         list_add(&vma.cache_list, &cp->cache_list);
         if (vma.reap_scanh == NULL)
@@ -351,7 +351,7 @@ slab_add_cache(slab_cache_t *cp)
 /* Sets cp->size, cp->pf_order, cp->num, cp->align.
  * Assumes that cp->flags are set. */
 static unsigned long
-compute_slab_wastage(slab_cache_t *cp, size_t min_align)
+compute_slab_wastage(mem_cache_t *cp, size_t min_align)
 {
         unsigned long wastage = 0;
         unsigned long waste_per_obj = 0;
@@ -394,13 +394,13 @@ compute_slab_wastage(slab_cache_t *cp, size_t min_align)
 }
 
 static void
-slab_init_cache(slab_cache_t *cp,
+slab_init_cache(mem_cache_t *cp,
                 const char *name, size_t size, size_t align,
-                slab_cache_flags_t flags,
+                mem_cache_flags_t flags,
                 void (*ctor)(void *, size_t),
                 void (*dtor)(void *, size_t))
 {
-        slab_cache_ctor(cp, 0);
+        mem_cache_ctor(cp, 0);
         strlcpy(cp->name, name, CACHE_NAMELEN+1);
         cp->obj_size            = size;
         cp->flags               = flags;
@@ -416,25 +416,25 @@ slab_init_cache(slab_cache_t *cp,
 }
 
 static void *
-slab_getpages(slab_cache_t *cp, mflags_t flags)
+slab_getpages(mem_cache_t *cp, mflags_t flags)
 {
         void *addr = alloc_pages(flags, cp->pf_order);
         return addr;
 }
 
 static void
-slab_freepages(slab_cache_t *cp, void *p)
+slab_freepages(mem_cache_t *cp, void *p)
 {
         free_pages(p, cp->pf_order);
 }
 
-slab_cache_t *
-slab_cache_create(const char *name, size_t size, size_t align,
-                  slab_cache_flags_t flags,
+mem_cache_t *
+mem_cache_create(const char *name, size_t size, size_t align,
+                  mem_cache_flags_t flags,
                   void (*ctor)(void *, size_t),
                   void (*dtor)(void *, size_t))
 {
-        slab_cache_t *cachep;
+        mem_cache_t *cachep;
 
         bug_on(flags & ~SLAB_CACHE_GOODFLAGS, "Illegal flags argument.");
 
@@ -442,7 +442,7 @@ slab_cache_create(const char *name, size_t size, size_t align,
         if (size >= PAGE_SIZE / 8)
                 flags |= SLAB_CACHE_SLABOFF;
 
-        cachep = (slab_cache_t *)slab_cache_alloc(&vma.cache_cache, M_KERNEL);
+        cachep = (mem_cache_t *)mem_cache_alloc(&vma.cache_cache, M_KERNEL);
         if (!cachep) {
                 /* TODO warning */
                 return NULL;
@@ -453,7 +453,7 @@ slab_cache_create(const char *name, size_t size, size_t align,
 }
 
 static void
-slab_destroy(slab_cache_t *cp, slab_t *sp)
+slab_destroy(mem_cache_t *cp, slab_t *sp)
 {
         unsigned long i;
         void *p = sp->buf;
@@ -469,11 +469,11 @@ slab_destroy(slab_cache_t *cp, slab_t *sp)
         /* If we keep book-keeping off-slab, make sure we remove that
          * too. */
         if (cp->flags & SLAB_CACHE_SLABOFF)
-                slab_cache_free(&vma.slab_cache, sp);
+                mem_cache_free(&vma.mem_cache, sp);
 }
 
 static bool
-cache_unused(slab_cache_t *cp)
+cache_unused(mem_cache_t *cp)
 {
         return (list_empty(&cp->slabs_full) &&
                 list_empty(&cp->slabs_partial) &&
@@ -481,7 +481,7 @@ cache_unused(slab_cache_t *cp)
 }
 
 static void
-cache_reap_empty(slab_cache_t *cp)
+cache_reap_empty(mem_cache_t *cp)
 {
         slab_t *sp, *s;
 
@@ -493,7 +493,7 @@ cache_reap_empty(slab_cache_t *cp)
 }
 
 int
-slab_cache_destroy(slab_cache_t *cp)
+mem_cache_destroy(mem_cache_t *cp)
 {
         bug_on(vma.num_caches == 0, "No caches registered");
 
@@ -507,19 +507,19 @@ slab_cache_destroy(slab_cache_t *cp)
         }
         if (vma.reap_scanh == &cp->cache_list)
                 vma.reap_scanh = cp->cache_list.next;
-        slab_cache_free(&vma.cache_cache, cp);
+        mem_cache_free(&vma.cache_cache, cp);
         vma.num_caches--;
         return 0;
 }
 
 static int
-slab_init_objects(slab_cache_t *cp, slab_t *sp, mflags_t lflags)
+slab_init_objects(mem_cache_t *cp, slab_t *sp, mflags_t lflags)
 {
         void *p;
         unsigned long i;
 
         if (cp->flags & SLAB_CACHE_SLABOFF) {
-                sp->slab_bufs = slab_cache_alloc(&vma.slab_buf_cache,
+                sp->slab_bufs = mem_cache_alloc(&vma.slab_buf_cache,
                                                  lflags);
                 if (!sp->slab_bufs)
                         return 1;
@@ -553,11 +553,11 @@ slab_init_objects(slab_cache_t *cp, slab_t *sp, mflags_t lflags)
 }
 
 static slab_t *
-slab_cache_allocmgmt(slab_cache_t *cp, void *objp, mflags_t lflags)
+mem_cache_allocmgmt(mem_cache_t *cp, void *objp, mflags_t lflags)
 {
         slab_t *sp;
         if (cp->flags & SLAB_CACHE_SLABOFF) {
-               sp = slab_cache_alloc(&vma.slab_cache, lflags);
+               sp = mem_cache_alloc(&vma.mem_cache, lflags);
                if (!sp)
                        return NULL;
         } else {
@@ -568,7 +568,7 @@ slab_cache_allocmgmt(slab_cache_t *cp, void *objp, mflags_t lflags)
         if (slab_init_objects(cp, sp, lflags)) {
                 slab_dtor(sp, sizeof(slab_t));
                 if (cp->flags & SLAB_CACHE_SLABOFF)
-                        slab_cache_free(&vma.slab_cache, sp);
+                        mem_cache_free(&vma.mem_cache, sp);
                 return NULL;
         }
         return sp;
@@ -581,7 +581,7 @@ slab_find_free(slab_t *sp)
 }
 
 void *
-slab_cache_alloc(slab_cache_t *cp, mflags_t flags)
+mem_cache_alloc(mem_cache_t *cp, mflags_t flags)
 {
         slab_buf_t *bp;
 
@@ -615,7 +615,7 @@ slab_cache_alloc(slab_cache_t *cp, mflags_t flags)
         void *buf = slab_getpages(cp, flags);
         if (!buf)
                 return NULL;
-        sp = slab_cache_allocmgmt(cp, buf, flags);
+        sp = mem_cache_allocmgmt(cp, buf, flags);
         if (!sp) {
                 slab_freepages(cp, buf);
                 return NULL;
@@ -638,19 +638,19 @@ out:
 }
 
 void
-slab_cache_free(slab_cache_t *cp, void *obj)
+mem_cache_free(mem_cache_t *cp, void *obj)
 {
         slab_buf_t *bp = find_slab_buf(cp, obj);
         slab_t *sp;
 
         if (!bp) {
-                kprintf(PRI_ERR, "slab_cache_free: No record found.\n");
+                kprintf(PRI_ERR, "mem_cache_free: No record found.\n");
                 return;
         }
         sp = bp->sp;
 
         if (sp->num == 0) {
-                kprintf(PRI_ERR, "slab_cache_free: Empty slab (double free?)\n");
+                kprintf(PRI_ERR, "mem_cache_free: Empty slab (double free?)\n");
                 return;
         }
 
@@ -686,8 +686,8 @@ slab_reap(void)
 {
         #define REAP_SCANLEN 10 /* Only scan 10 caches per reap */
 
-        slab_cache_t *cp;
-        slab_cache_t *to_reap = NULL;
+        mem_cache_t *cp;
+        mem_cache_t *to_reap = NULL;
         unsigned int i = 0;
         unsigned int best_num_free;
 
@@ -743,7 +743,7 @@ static int
 create_kmalloc_record(mflags_t flags, void *vaddr, unsigned long order,
                       unsigned long ind)
 {
-        kmalloc_record_t *bp = slab_cache_alloc(&vma.kmalloc_record_cache,
+        kmalloc_record_t *bp = mem_cache_alloc(&vma.kmalloc_record_cache,
                                                 flags);
         if (!bp)
                 return 1;
@@ -779,9 +779,9 @@ kmalloc(unsigned long size, mflags_t flags)
                 }
                 vma.kmalloc_big_cache.big_bused += PAGE_SIZE<<pf_ord;
         } else {
-                ret = slab_cache_alloc(&vma.kmalloc_caches[ind-2], flags);
+                ret = mem_cache_alloc(&vma.kmalloc_caches[ind-2], flags);
                 if (create_kmalloc_record(flags, ret, pf_ord, ind-2)) {
-                        slab_cache_free(&vma.kmalloc_caches[ind-2], ret);
+                        mem_cache_free(&vma.kmalloc_caches[ind-2], ret);
                         return NULL;
                 }
         }
@@ -808,9 +808,9 @@ kfree(void *addr)
                         "Not enough big bytes for freeing.");
                 vma.kmalloc_big_cache.big_bused -= PAGE_SIZE<<bp->order;
         } else {
-                slab_cache_free(&vma.kmalloc_caches[bp->ind], addr);
+                mem_cache_free(&vma.kmalloc_caches[bp->ind], addr);
         }
-        slab_cache_free(&vma.kmalloc_record_cache, bp);
+        mem_cache_free(&vma.kmalloc_record_cache, bp);
 }
 
 /* TODO: Be smarter about this */
@@ -849,7 +849,7 @@ vma_init_kmalloc_caches(void)
         slab_add_cache(&vma.kmalloc_record_cache);
         for (i = 0; i < vma.num_kmalloc_caches; i++)
         {
-                slab_cache_ctor(&vma.kmalloc_caches[i], 0);
+                mem_cache_ctor(&vma.kmalloc_caches[i], 0);
                 vma.kmalloc_caches[i].wastage
                         = compute_slab_wastage(&vma.kmalloc_caches[i], 0);
                 slab_add_cache(&vma.kmalloc_caches[i]);
@@ -867,13 +867,13 @@ static void
 vma_init_cache_cache(void)
 {
         slab_init_cache(&vma.cache_cache, "cache_cache",
-                        sizeof(slab_cache_t), sizeof(slab_cache_t),
-                        0, slab_cache_ctor, slab_cache_dtor);
+                        sizeof(mem_cache_t), sizeof(mem_cache_t),
+                        0, mem_cache_ctor, mem_cache_dtor);
         slab_add_cache(&vma.cache_cache);
-        slab_init_cache(&vma.slab_cache, "slab_cache",
+        slab_init_cache(&vma.mem_cache, "mem_cache",
                         sizeof(slab_t), sizeof(slab_t),
                         0, slab_ctor, slab_dtor);
-        slab_add_cache(&vma.slab_cache);
+        slab_add_cache(&vma.mem_cache);
         slab_init_cache(&vma.slab_buf_cache, "slab_buf_cache",
                         SLAB_MAX_OBJS * sizeof(slab_buf_t),
                         SLAB_MAX_OBJS * sizeof(slab_buf_t),
@@ -891,7 +891,7 @@ vma_init(void)
 }
 
 static inline unsigned long
-slab_usage(slab_cache_t *cp, slab_t *sp)
+slab_usage(mem_cache_t *cp, slab_t *sp)
 {
         unsigned long sz_per_obj;
         if (cp->flags & SLAB_CACHE_SLABOFF)
@@ -908,7 +908,7 @@ slab_num_records(slab_t *sp)
 }
 
 static inline unsigned long
-cache_usage(slab_cache_t *cp)
+cache_usage(mem_cache_t *cp)
 {
         slab_t *sp;
         unsigned long t = cp->big_bused;
@@ -924,7 +924,7 @@ cache_usage(slab_cache_t *cp)
 }
 
 static inline unsigned long
-cache_num_records(slab_cache_t *cp)
+cache_num_records(mem_cache_t *cp)
 {
         slab_t *sp;
         unsigned long t = 0;
@@ -942,7 +942,7 @@ cache_num_records(slab_cache_t *cp)
 void
 vma_report(void)
 {
-        slab_cache_t *cp;
+        mem_cache_t *cp;
         unsigned long i = 0;
         char buf[77];
         banner(buf, sizeof(buf), '=', " %3d caches ", vma.num_caches);
@@ -988,17 +988,17 @@ vma_test_kmalloc(void)
 __test static void
 vma_test_cache_create(void)
 {
-        slab_cache_t *cp;
+        mem_cache_t *cp;
 
-        cp = slab_cache_create("test!", 4, 0, 0, NULL, NULL);
-        bug_on(!cp, "slab_cache_create failed");
+        cp = mem_cache_create("test!", 4, 0, 0, NULL, NULL);
+        bug_on(!cp, "mem_cache_create failed");
 
-        char *p = slab_cache_alloc(cp, 0);
-        bug_on(!p, "slab_cache_alloc returned NULL");
+        char *p = mem_cache_alloc(cp, 0);
+        bug_on(!p, "mem_cache_alloc returned NULL");
         *p = 'h';
-        slab_cache_free(cp, p);
+        mem_cache_free(cp, p);
 
-        bug_on (slab_cache_destroy(cp), "Failed to destroy cache");
+        bug_on (mem_cache_destroy(cp), "Failed to destroy cache");
 
         kprintf(0, "vma_test_cache_create passed\n");
 }

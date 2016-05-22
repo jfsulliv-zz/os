@@ -29,51 +29,54 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MM_ARCH_PAGING_H_
-#define _MM_ARCH_PAGING_H_
+#ifndef _MM_PAGE_TABLE_H_
+#define _MM_PAGE_TABLE_H_
 
-/*
- * mm/arch_paging.h
- *
- * James Sullivan <sullivan.james.f@gmail.com>
- * 04/16
- */
+#include <mm/flags.h>
+#include <mm/pflags.h>
+#include <sys/bitops_generic.h>
 
-#include <stdint.h>
-#include <util/list.h>
-#include <machine/params.h>
+typedef unsigned int pgflags_t;
 
-#define KERN_OFFS 0x00100000UL
-#define PAGE_SHIFT 12
-#define PD_SHIFT   22
-#define PTABS_PER_PD 1024
-#define PAGES_PER_PT 1024
-#define PAGE_SIZE 4096
-#define PTAB_SIZE (1 << PAGE_SHIFT)
-#define PDIR_SIZE (1 << PD_SHIFT)
-#define PGENT_ADDR(x)   (x & ~(PAGE_SIZE - 1))
-#define PGENT_FLAGS(x)  (x &  (PAGE_SIZE - 1))
+#define _PAGE_BIT_PRESENT       0
+#define _PAGE_BIT_RW            1
+#define _PAGE_BIT_USER          2
+#define _PAGE_BIT_PWT           3
+#define _PAGE_BIT_PCD           4
+#define _PAGE_BIT_ACCESSED      5
+#define _PAGE_BIT_DIRTY         6
 
-#define PFN_UP(x)       (((x) + PAGE_SIZE-1) >> PAGE_SHIFT)
-#define PFN_DOWN(x)     ((x) >> PAGE_SHIFT)
+#define _PAGE_PRESENT   0x001
+#define _PAGE_RW        0x002
+#define _PAGE_USER      0x004
+#define _PAGE_PWT       0x008
+#define _PAGE_PCD       0x010
+#define _PAGE_ACCESSED  0x020
+#define _PAGE_DIRTY     0x040
 
-#define _pa(x)  ((unsigned long)x-KERN_BASE)
-#define _va(x)  ((unsigned long)x+KERN_BASE)
+#define _PAGE_PROTNONE  0x080   /* If not present */
 
-#define paddr_of(pfn) ((unsigned long)((pfn) << PAGE_SHIFT))
+#define PAGE_FLAGS_MASK (GENMASK(11, 0))
+#define PAGE_ADDR_MASK  (~PAGE_FLAGS_MASK)
 
-#define PT_INDEX(x) (((unsigned long)(x) >> PAGE_SHIFT) & 0x03FF)
-#define PD_INDEX(x) (((unsigned long)(x) >> PD_SHIFT) & (PTABS_PER_PD - 1))
+#define PAGE_FLAGS_BAD(x) ((x) & (~PAGE_FLAGS_MASK))
 
+#define PAGE_TAB  (_PAGE_PRESENT | _PAGE_USER | _PAGE_RW | \
+                   _PAGE_ACCESSED | _PAGE_DIRTY)
+#define KPAGE_TAB (_PAGE_PRESENT | _PAGE_RW | _PAGE_ACCESSED | \
+                   _PAGE_DIRTY)
 
-typedef struct {
-        uint32_t ent;
-} pgent_t;
-
-static inline unsigned long
-pgent_paddr(pgent_t *ent)
+static inline pgflags_t
+pt_flags(mflags_t mflags, pflags_t pflags)
 {
-        return (ent->ent & (~(PAGE_SIZE - 1)));
+        pgflags_t ret = _PAGE_PRESENT;
+        if (!mflags && !pflags)
+                return _PAGE_PROTNONE;
+        if (mflags & M_HIGH)
+                ret |= _PAGE_USER;
+        if ((pflags & PFLAGS_R) && (pflags & PFLAGS_W))
+                ret |= _PAGE_RW;
+        return ret;
 }
 
 #endif

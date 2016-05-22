@@ -1,5 +1,5 @@
 CC=$(ARCH)-elf-gcc
-WARNINGS := -Wall -Wextra -pedantic
+WARNINGS := -Wall -Wextra
 CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -lgcc -ffreestanding \
             -fno-builtin $(patsubst %,-I%,$(INC))
 
@@ -7,7 +7,7 @@ ASM     = nasm
 AFLAGS  =-felf$(BITS) $(patsubst %,-i%/,$(INC))
 
 LD      = ld
-LDFLAGS = -melf_$(ARCH) -nostdlib -T build/linker.ld
+LDFLAGS = -melf_$(ARCH) -nostdlib -T arch/$(ARCH)/build/linker.ld
 
 dir := arch/$(ARCH)
 include $(dir)/module.mk

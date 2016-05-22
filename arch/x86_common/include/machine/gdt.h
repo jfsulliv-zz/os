@@ -39,14 +39,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 06/15
  */
 
+#include <machine/params.h>
 #include <stdint.h>
 
-#define NUM_GDT_ENTRIES 6
-#define GDT_KCODE_IND   1
-#define GDT_KDATA_IND   2
-#define GDT_UCODE_IND   3
-#define GDT_UDATA_IND   4
-#define GDT_TSS_IND     5
+#if WORD_SIZE == 32
+#include <machine/gdt_i386.h>
+#else
+#include <machine/gdt_i686.h>
+#endif
 
 #define SEG_DESCTYPE(x)  ((x) << 0x04) // Descriptor type (0 for system, 1 for code/data)
 #define SEG_PRES(x)      ((x) << 0x07) // Present
@@ -89,33 +89,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
         SEG_LONG(0)                  | SEG_SIZE(1) | SEG_GRAN(1) | \
         SEG_PRIV(3)                  | SEG_DATA_RDWR
 
-struct gdt_entry
-{
-        unsigned limit_low:             16;
-        unsigned base_low :             24;
-        unsigned accessed :             1;
-        unsigned read_write:            1;
-        unsigned conforming_expand_down:1;
-        unsigned code:                  1;
-        unsigned always_1:              1;
-        unsigned dpl:                   2;
-        unsigned present:               1;
-        unsigned limit_high:            4;
-        unsigned available:             1;
-        unsigned always_0:              1;
-        unsigned big:                   1;
-        unsigned gran:                  1;
-        unsigned base_high:             8;
-} __attribute__((packed));
-
-struct gdt_ptr
-{
-        unsigned short limit;
-        unsigned int base;
-} __attribute__((packed));
-
-struct gdt_entry gdt[NUM_GDT_ENTRIES];
-struct gdt_ptr   gp;
+extern struct gdt_entry gdt[NUM_GDT_ENTRIES];
+extern struct gdt_ptr   gp;
 
 void gdt_install();
 

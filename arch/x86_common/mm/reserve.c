@@ -29,41 +29,58 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_REGS_H_
-#define _MACHINE_REGS_H_
+#include <stdbool.h>
+#include <stddef.h>
+#include <mm/paging.h>
+#include <mm/reserve.h>
+#include <sys/panic.h>
 
-#include <stdint.h>
+bool reserve_enabled = true;
 
-/* Register context */
-struct regs
+bool
+can_reserve(void)
 {
-        unsigned int gs, fs, es, ds;
-        unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-        unsigned int int_no, err_code;
-        unsigned int eip, cs, eflags, useresp, ss;
-};
+        return reserve_enabled;
+}
 
-static inline unsigned int
-get_cr2(void)
+void
+disable_reserve(void)
 {
-        unsigned int ret;
-        __asm__ __volatile__(
-                "mov %%cr2, %0"
-                : "=a" (ret));
+        reserve_enabled = false;
+}
+
+paddr_t
+reserve_low_pages(memlimits_t *lim, unsigned int num)
+{
+        paddr_t ret;
+
+        bug_on(!lim, "NULL parameter");
+        bug_on(num + lim->low_pfn >= lim->high_pfn,
+               "Low memory pool exhausted");
+        bug_on(!can_reserve(), "Page reserved after PFA usage");
+
+        if (num == 0)
+                return 0;
+
+        ret = paddr_of(lim->low_pfn);
+        lim->low_pfn += num;
         return ret;
 }
 
-static inline void
-set_cr3(unsigned long val)
+paddr_t
+reserve_high_pages(memlimits_t *lim, unsigned int num)
 {
-        __asm__ __volatile__(
-                "mov %0, %%cr3"
-                : "=r" (val));
+        paddr_t ret;
+
+        bug_on(!lim, "NULL parameter");
+        bug_on(num + lim->high_pfn >= lim->max_pfn,
+               "High memory pool exhausted");
+        bug_on(!can_reserve(), "Page reserved after PFA usage");
+
+        if (num == 0)
+                return 0;
+
+        ret = paddr_of(lim->high_pfn);
+        lim->high_pfn += num;
+        return ret;
 }
-
-void dump_regs_from(struct regs *r);
-void dump_regs(void);
-void get_regs(struct regs *to);
-void backtrace(unsigned int max);
-
-#endif

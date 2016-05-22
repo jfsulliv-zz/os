@@ -37,16 +37,20 @@ THE POSSIBILITY OF SUCH DAMAGE.
 /* Register context */
 struct regs
 {
-        unsigned int gs, fs, es, ds;
-        unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-        unsigned int int_no, err_code;
-        unsigned int eip, cs, eflags, useresp, ss;
+        uint64_t savfp, savpc; /* Copy of rbp, rip */
+        uint64_t rdi, rsi, rdx, rcx;
+        uint64_t r8,  r9,  rax, rbx;
+        uint64_t rbp, r10, r11, r12;
+        uint64_t r13, r14, r15;
+        uint64_t ds, es, fs, gs;
+        uint64_t int_no, err_code;
+        uint64_t rip, cs, flags, rsp, ss;
 };
 
-static inline unsigned int
+static inline unsigned long
 get_cr2(void)
 {
-        unsigned int ret;
+        unsigned long ret;
         __asm__ __volatile__(
                 "mov %%cr2, %0"
                 : "=a" (ret));

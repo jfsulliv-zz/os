@@ -41,31 +41,22 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
 #include <stddef.h>
+#include <machine/types.h>
 #include <mm/arch_paging.h>
 #include <mm/page_table.h>
+#include <util/list.h>
 
 typedef struct {
-        void *vaddr;
+        vaddr_t vaddr;
         unsigned long order;
         struct list_head list;
 } page_t;
 
-static inline unsigned long
+static inline paddr_t
 phys_addr(page_t *base, page_t *page)
 {
         return (page - base) * PAGE_SIZE;
 }
-
-typedef struct {
-        pgent_t ents[PAGES_PER_PT];
-} pgtab_t;
-
-typedef struct {
-        pgent_t tabs[PTABS_PER_PD];
-} pgdir_t;
-
-extern pgdir_t *page_directory;
-extern pgtab_t *page_tables;
 
 typedef struct {
         unsigned long max_pfn;
@@ -204,35 +195,23 @@ highmem_top(memlimits_t *lim)
 }
 
 static inline bool
-is_dma(memlimits_t *lim, unsigned long paddr)
+is_dma(memlimits_t *lim, paddr_t paddr)
 {
         return (dma_base(lim) <= paddr && dma_top(lim) >= paddr);
 }
 
 static inline bool
-is_lowmem(memlimits_t *lim, unsigned long paddr)
+is_lowmem(memlimits_t *lim, paddr_t paddr)
 {
         return (lowmem_base(lim) <= paddr && lowmem_top(lim) >= paddr);
 }
 
 static inline bool
-is_highmem(memlimits_t *lim, unsigned long paddr)
+is_highmem(memlimits_t *lim, paddr_t paddr)
 {
         return (highmem_base(lim) <= paddr && highmem_top(lim) >= paddr);
 }
 
 extern memlimits_t mem_limits;
-
-/* Arch specific */
-int pg_map(void *vaddr, unsigned long paddr, pgflags_t flags);
-int pg_map_pages(void *vaddr, size_t npg, unsigned long paddr,
-                 pgflags_t flags);
-int pg_unmap(void *vaddr);
-int pg_unmap_pages(void *vaddr, size_t npg);
-unsigned long pg_get_paddr(void *vaddr);
-
-int copy_pgdir(pgdir_t *to, pgdir_t *from);
-
-pgdir_t *alloc_pgdir(void);
 
 #endif /* _MM_PAGING_H_ */

@@ -42,6 +42,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/flags.h>
 #include <mm/reserve.h>
 #include <mm/paging.h>
+#include <mm/pmm.h>
 #include <mm/pfa.h>
 #include <sys/config.h>
 #include <sys/debug.h>
@@ -85,7 +86,6 @@ is_avail(page_t *pg)
 void
 pfa_init(memlimits_t *limits)
 {
-        unsigned long pages_phys;
         unsigned long pages_npg;
         unsigned long tag_bits_phys;
         unsigned long tag_bits_npg;
@@ -95,6 +95,7 @@ pfa_init(memlimits_t *limits)
         unsigned long all_pages;
         unsigned long pages_sz;
         unsigned long i;
+        paddr_t pages_phys;
 
 
         bug_on(!limits, "NULL limits");
@@ -107,19 +108,22 @@ pfa_init(memlimits_t *limits)
         pages_npg = ((PAGE_SIZE - 1 + pages_sz) / PAGE_SIZE);
         pages_phys = reserve_low_pages(limits, pages_npg);
         pfa.pages = (page_t *)_va(pages_phys);
-        bug_on(pg_map_pages(pfa.pages, pages_npg, pages_phys, KPAGE_TAB),
+        bug_on(pmm_map_range(&init_pmm, (vaddr_t)pfa.pages, pages_npg,
+                             pages_phys, M_KERNEL, PFLAGS_RW),
                 "Failed to map pagelist to virtual address.");
 
         /* Do the same for our tag bits. */
         tag_bits_npg = ((PAGE_SIZE - 1 + (all_pages >> 3)) / PAGE_SIZE);
         tag_bits_phys = reserve_low_pages(limits, tag_bits_npg);
         pfa.tag_bits = (unsigned long *)_va(tag_bits_phys);
-        bug_on(pg_map_pages(pfa.tag_bits, tag_bits_npg, tag_bits_phys,
-               KPAGE_TAB), "Failed to map tag bits to virtual address.");
+        bug_on(pmm_map_range(&init_pmm, (vaddr_t)pfa.tag_bits,
+                             tag_bits_npg, tag_bits_phys, M_KERNEL,
+                             PFLAGS_RW),
+                "Failed to map tag bits to virtual address.");
 
         for (i = 0; i < all_pages; i++) {
                 list_head_init(&pfa.pages[i].list);
-                pfa.pages[i].vaddr = NULL;
+                pfa.pages[i].vaddr = 0;
         }
         bzero(pfa.tag_bits, (all_pages >> 3));
 
@@ -155,7 +159,7 @@ pfa_init(memlimits_t *limits)
 
                 page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
-                pg->vaddr = (void *)_va(ind * PAGE_SIZE);
+                pg->vaddr = _va(ind * PAGE_SIZE);
                 bug_on(_pa(pg->vaddr) < dma_base(limits), "oops");
                 list_add(&pfa.dma_zones[ord].list, &pg->list);
 
@@ -180,7 +184,7 @@ pfa_init(memlimits_t *limits)
 
                 page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
-                pg->vaddr = (void *)_va(ind * PAGE_SIZE);
+                pg->vaddr = _va(ind * PAGE_SIZE);
                 bug_on(_pa(pg->vaddr) < lowmem_base(limits), "oops");
                 list_add(&pfa.low_zones[ord].list, &pg->list);
 
@@ -205,7 +209,7 @@ pfa_init(memlimits_t *limits)
 
                 page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
-                pg->vaddr = NULL;
+                pg->vaddr = 0;
                 list_add(&pfa.high_zones[ord].list, &pg->list);
 
                 ind += next_block_size;
@@ -263,9 +267,8 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
                         i--; page_t *buddy = (page_t *)(page + (1UL << i));
                         buddy->order = i;
                         if (page->vaddr) {
-                                buddy->vaddr = (void *)_va(phys_addr(
-                                                           pfa.pages,
-                                                           buddy));
+                                buddy->vaddr = _va(phys_addr(pfa.pages,
+                                                   buddy));
                         }
                         mark_avail(buddy);
                         list_add(&zones[i].list, &buddy->list);
@@ -274,9 +277,10 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
 
                 /* Map the pages into the tab. */
                 if (page->vaddr) {
-                        bug_on(pg_map_pages(page->vaddr, (1 << page->order),
+                        bug_on(pmm_map_range(&init_pmm, page->vaddr,
+                                            (1 << page->order),
                                             phys_addr(pfa.pages, page),
-                                            mflags_to_pgflags(flags)),
+                                            flags, PFLAGS_RW),
                                "Page mapping failed");
                 }
                 return page;
@@ -317,8 +321,7 @@ pfa_free_pages(page_t *p, unsigned int order)
                         break;
 
                 if (p->vaddr) {
-                        buddy->vaddr = (void *)_va(phys_addr(pfa.pages,
-                                                             buddy));
+                        buddy->vaddr = _va(phys_addr(pfa.pages, buddy));
                 }
 
                 list_del(&buddy->list);
@@ -339,8 +342,8 @@ pfa_free_pages(page_t *p, unsigned int order)
 
         /* Unmap the pages. */
         if (p->vaddr) {
-                bug_on(pg_unmap_pages(p->vaddr, (1 << p->order)),
-                        "Page unmapping failed");
+                vaddr_t eva = p->vaddr + ((1 << p->order) / PAGE_SIZE);
+                pmm_unmap_range(&init_pmm, p->vaddr, eva);
         }
 }
 

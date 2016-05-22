@@ -40,8 +40,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include <machine/regs.h>
+#include <mm/pmm.h>
 #include <mm/vma.h>
-#include <mm/vmman.h>
 #include <util/list.h>
 
 typedef int32_t  pid_t;
@@ -104,13 +104,13 @@ typedef struct process_state {
 typedef struct process_control {
         struct list_head children;      /* Child process list */
         struct list_head pr_list;       /* Entry in the above list */
-        vmman_t vm;                     /* Virtual Memory info */
+        pmm_t *pmm;                     /* Physical memory mappings */
 } proc_control_t;
 
 #define PROC_CONTROL_INIT(c) ((proc_control_t)\
 {       .children = LIST_HEAD_INIT(c.children), \
         .pr_list = LIST_HEAD_INIT(c.pr_list),   \
-        .vm = { 0 }                             \
+        .pmm = NULL                             \
 })
 
 /* The global process control block which contains:
@@ -136,9 +136,8 @@ extern proc_t init_proc; /* The init process */
 extern proc_t **proc_table;
 extern pid_t    pid_max;
 
-#ifdef CONF_VMA_SLAB
-extern slab_cache_t *proc_alloc_cache;
-#endif
+/* A memory cache for handing out proc_t structs */
+extern mem_cache_t *proc_alloc_cache;
 
 int
 set_pidmax(pid_t);

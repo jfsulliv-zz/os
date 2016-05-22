@@ -48,6 +48,21 @@ void *kmalloc (unsigned long size, mflags_t flags);
 void  kfree   (void *addr);
 void *krealloc(void *addr, unsigned long size, mflags_t flags);
 
+mem_cache_t *
+mem_cache_create(const char *name, size_t size, size_t align,
+                  mem_cache_flags_t flags,
+                  void (*ctor)(void *, size_t),
+                  void (*dtor)(void *, size_t));
+
+int
+mem_cache_destroy(mem_cache_t *cp);
+
+void *
+mem_cache_alloc(mem_cache_t *cp, mflags_t flags);
+
+void
+mem_cache_free(mem_cache_t *cp, void *obj);
+
 void
 vma_report(void);
 

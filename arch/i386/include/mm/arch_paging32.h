@@ -29,49 +29,38 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MM_PAGE_TABLE_H_
-#define _MM_PAGE_TABLE_H_
+#ifndef _MM_ARCH_PAGING32_H_
+#define _MM_ARCH_PAGING32_H_
 
-#include <mm/flags.h>
-#include <sys/bitops_generic.h>
+/*
+ * mm/arch_paging.h
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 04/16
+ */
 
-typedef unsigned int pgflags_t;
+#include <stdint.h>
 
-#define _PAGE_BIT_PRESENT       0
-#define _PAGE_BIT_RW            1
-#define _PAGE_BIT_USER          2
-#define _PAGE_BIT_PWT           3
-#define _PAGE_BIT_PCD           4
-#define _PAGE_BIT_ACCESSED      5
-#define _PAGE_BIT_DIRTY         6
+#ifndef CONF_X86_PAE
 
-#define _PAGE_PRESENT   0x001
-#define _PAGE_RW        0x002
-#define _PAGE_USER      0x004
-#define _PAGE_PWT       0x008
-#define _PAGE_PCD       0x010
-#define _PAGE_ACCESSED  0x020
-#define _PAGE_DIRTY     0x040
+#define PGD_BITS       10
+#define PUD_BITS        0
+#define PMD_BITS        0
+#define PTE_BITS       10
+#define PG_BITS        12
 
-#define _PAGE_PROTNONE  0x080   /* If not present */
+typedef uint32_t pgent_t;
 
-#define PAGE_FLAGS_MASK (GENMASK(11, 0))
-#define PAGE_ADDR_MASK  (~PAGE_FLAGS_MASK)
+#else
 
-#define PAGE_FLAGS_BAD(x) ((x) & (~PAGE_FLAGS_MASK))
+#define PGD_BITS        2
+#define PUD_BITS        9
+#define PMD_BITS        0
+#define PTE_BITS        9
+#define PG_BITS        12
 
-#define PAGE_TAB  (_PAGE_PRESENT | _PAGE_USER | _PAGE_RW | \
-                   _PAGE_ACCESSED | _PAGE_DIRTY)
-#define KPAGE_TAB (_PAGE_PRESENT | _PAGE_RW | _PAGE_ACCESSED | \
-                   _PAGE_DIRTY)
+typedef uint64_t pgent_t;
 
-static inline pgflags_t
-mflags_to_pgflags(mflags_t fl)
-{
-        pgflags_t ret = _PAGE_PRESENT | _PAGE_RW;
-        if (fl & M_HIGH)
-                ret |= _PAGE_USER;
-        return ret;
-}
+#endif
 
 #endif

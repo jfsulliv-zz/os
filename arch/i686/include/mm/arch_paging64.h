@@ -29,33 +29,24 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <machine/regs.h>
-#include <mm/paging.h>
-#include <mm/pfa.h>
-#include <sys/kprintf.h>
-#include <sys/panic.h>
+#ifndef _MM_ARCH_PAGING64_H_
+#define _MM_ARCH_PAGING64_H_
 
-static inline bool
-is_kernel_fault(unsigned long addr)
-{
-        return (addr >= KERN_OFFS);
-}
+/*
+ * mm/arch_paging.h
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 04/16
+ */
 
-static void
-handle_fault(struct regs *r, unsigned long fault_addr)
-{
-        kprintf(0, "Page fault at 0x%08x\n", fault_addr);
-        if (is_kernel_fault(fault_addr)) {
-                pgtab_t *tab;
-                panic("TODO");
-        } else {
-                panic("TODO - user faults");
-        }
-}
+#include <stdint.h>
 
-void
-pagefault_handler(struct regs *r)
-{
-        uint32_t fault_addr = get_cr2();
-        handle_fault(r, fault_addr);
-}
+#define PGD_BITS        9
+#define PUD_BITS        9
+#define PMD_BITS        9
+#define PTE_BITS        9
+#define PG_BITS        12
+
+typedef uint64_t pgent_t;
+
+#endif

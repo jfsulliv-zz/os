@@ -84,7 +84,7 @@ alloc_pages(mflags_t flags, unsigned int order)
         page_t *p = pfa_alloc_pages(flags, order);
         if (!p)
                 return NULL;
-        return p->vaddr;
+        return (void *)p->vaddr;
 }
 
 static inline void

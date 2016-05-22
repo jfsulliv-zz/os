@@ -38,7 +38,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 06/15
  */
 
+#include <machine/params.h>
 #include <stdint.h>
+
+#if WORD_SIZE == 32
+#include <machine/idt_i386.h>
+#else
+#include <machine/idt_i686.h>
+#endif
 
 #define NUM_IDT_ENTRIES         256
 #define INT_EXCEPTION_BASE      0
@@ -61,27 +68,12 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define IDT_32_INTERRUPT IDT_32_INTR_GATE_TYP | IDT_PRES(1) | \
                          IDT_DPL(0x0)
 
-struct idt_entry
-{
-        unsigned short base_lo;
-        unsigned short sel;             /* segment selector */
-        unsigned char  zero;            /* unused -- set to 0 */
-        unsigned char  type_attr;       /* types & attributes */
-        unsigned short base_hi;
-} __attribute__((packed));
-
-struct idt_ptr
-{
-        unsigned short limit;
-        unsigned int base;
-} __attribute__((packed));
-
-struct idt_entry idt[NUM_IDT_ENTRIES];
-struct idt_ptr   idtp;
+extern struct idt_entry idt[NUM_IDT_ENTRIES];
+extern struct idt_ptr   idtp;
 
 extern const char *exception_messages[INT_EXCEPTION_LIMIT];
 
-void idt_set_gate(unsigned char num, unsigned int base, unsigned short sel,
+void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel,
                   unsigned char flags);
 void idt_install(void);
 

@@ -29,21 +29,18 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <mm/pmm.h>
 #include <mm/vma.h>
-#include <mm/vmman.h>
 #include <sys/string.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
-
-extern pgdir_t proc0_pdir;
 
 proc_t init_proc;
 
 proc_t **proc_table;
 pid_t    pid_max = 65535; /* Default value */
 
-#ifdef CONF_VMA_SLAB
-slab_cache_t *proc_alloc_cache;
+mem_cache_t *proc_alloc_cache;
 
 void proc_ctor(void *p, __attribute__((unused)) size_t sz)
 {
@@ -60,7 +57,6 @@ void proc_dtor(void *p, __attribute__((unused)) size_t sz)
                 return;
         proc_deinit(proc);
 }
-#endif
 
 int
 set_pidmax(pid_t p)
@@ -92,19 +88,17 @@ proc_system_init_initproc(void)
         init_proc = PROC_INIT(init_proc);
         init_proc.id.pid = 1;
         init_proc.id.ppid = 0;
-        init_proc.control.vm.pgd = &proc0_pdir;
+        init_proc.control.pmm = &init_pmm;
         proc_table[1] = &init_proc;
 }
 
 static void
 proc_system_init_alloc(void)
 {
-#ifdef CONF_VMA_SLAB
-        proc_alloc_cache = slab_cache_create("pcb_cache", sizeof(proc_t),
+        proc_alloc_cache = mem_cache_create("pcb_cache", sizeof(proc_t),
                                              sizeof(proc_t),
                                              0, proc_ctor, proc_dtor);
         bug_on(!proc_alloc_cache, "Failed to create pcb_cache");
-#endif
 }
 
 void
@@ -119,28 +113,17 @@ static proc_t *
 _alloc_process(void)
 {
         proc_t *p;
-#ifdef CONF_VMA_SLAB
-        p = slab_cache_alloc(proc_alloc_cache, M_KERNEL);
-        /* proc_init is called during allocation */
-#else
-        p = kmalloc(sizeof(proc_t), M_KERNEL);
-        if (p)
-                proc_init(p);
-#endif
+        p = mem_cache_alloc(proc_alloc_cache, M_KERNEL);
         if (p) {
                 /* Check for errors */
                 if (p->id.pid == 0) /* Out of PIDs */
                         goto free_proc;
-                else if (p->control.vm.pgd == NULL) /* Out of memory */
+                else if (p->control.pmm == NULL) /* Out of memory */
                         goto free_proc;
         }
         return p;
 free_proc:
-#ifdef CONF_VMA_SLAB
-        slab_cache_free(proc_alloc_cache, p);
-#else
-        kfree(p);
-#endif
+        mem_cache_free(proc_alloc_cache, p);
         return NULL;
 }
 
@@ -152,12 +135,12 @@ find_process(pid_t pid)
         return proc_table[pid];
 }
 
-static void
+static int
 _make_child(proc_t *par, proc_t *p)
 {
         p->id.ppid = par->id.pid;
-        copy_vmman(&p->control.vm, &par->control.vm);
         list_add(&par->control.children, &p->control.pr_list);
+        return pmm_copy(p->control.pmm, par->control.pmm);
 }
 
 proc_t *
@@ -169,7 +152,10 @@ copy_process(proc_t *par, fork_req_t *req)
         proc_t *p = _alloc_process();
         if (!p)
                 return NULL;
-        _make_child(par, p);
+        if (_make_child(par, p)) {
+                free_process(p);
+                return NULL;
+        }
         return p;
 }
 
@@ -180,13 +166,7 @@ free_process(proc_t *p)
                 return;
         bug_on(p->state.sched_state != PROC_STATE_TERMINATED,
                "Process was freed while in use.");
-#ifdef CONF_VMA_SLAB
-        /* proc_deinit is called during allocation */
-        slab_cache_free(proc_alloc_cache, p);
-#else
-        proc_deinit(p);
-        kfree(p);
-#endif
+        mem_cache_free(proc_alloc_cache, p);
 }
 
 static pid_t
@@ -215,7 +195,7 @@ proc_init(proc_t *p)
         p->id.pid  = next_pid();
         p->state   = PROC_STATE_INIT;
         p->control = PROC_CONTROL_INIT(p->control);
-        vmman_init(&p->control.vm);
+        p->control.pmm = pmm_create();
 }
 
 void

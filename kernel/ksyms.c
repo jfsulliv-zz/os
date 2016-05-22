@@ -152,7 +152,8 @@ ksyms_find(unsigned long addr)
 {
         if (ksyms_broken)
                 return NULL;
-        bug_on(!ksyms_initialized, "ksyms used before initialization.");
+        if (!ksyms_initialized)
+                return NULL;
 
         /* Binary search our table to find the function that corresponds
          * to the address. Note that this will probably not be a perfect
@@ -209,11 +210,6 @@ char ksyms_report_buf[256];
 char *
 ksyms_report_eip(unsigned long addr)
 {
-        if (ksyms_broken)
-                return (char *)ksyms_broken_str;
-        if (!ksyms_initialized)
-                return (char *)ksyms_broken_str;
-
         ksyms_entry_t *ent = ksyms_find(addr);
         if (ent) {
                 slprintf(ksyms_report_buf, 256, "0x%08x (%s+0x%x)",
