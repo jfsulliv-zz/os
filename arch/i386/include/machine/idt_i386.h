@@ -47,4 +47,7 @@ struct idt_ptr
         unsigned int base;
 } __attribute__((packed));
 
+void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel,
+                unsigned char flags);
+
 #endif

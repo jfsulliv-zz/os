@@ -35,6 +35,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/types.h>
 #include <machine/params.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #if WORD_SIZE == 64
 #include <mm/arch_paging64.h>
@@ -69,6 +70,16 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define PMD_SHIFT       (PG_BITS + PTE_BITS + PMD_BITS)
 #define PTE_SHIFT       (PG_BITS + PTE_BITS)
 
+/* This is the bytes addressable by a full page table of each type. */
+#define PUD_REGN        ((size_t)1 << PUD_SHIFT)
+#define PMD_REGN        ((size_t)1 << PMD_SHIFT)
+#define PTE_REGN        ((size_t)1 << PTE_SHIFT)
+
+/* Returns the number of a given page table type needed to hold sz bytes */
+#define PUDS_NEEDED(sz) (PUD_BITS == 0 ? 0 : (((sz) + PUD_REGN) >> PUD_SHIFT))
+#define PMDS_NEEDED(sz) (PMD_BITS == 0 ? 0 : (((sz) + PMD_REGN) >> PMD_SHIFT))
+#define PTES_NEEDED(sz) (((sz) + PTE_REGN) >> PTE_SHIFT)
+
 #define PGD_IND(pa)     (((pa) >> PUD_SHIFT ) & (PGD_NUM - 1))
 #define PUD_IND(pa)     (((pa) >> PMD_SHIFT ) & (PUD_NUM - 1))
 #define PMD_IND(pa)     (((pa) >> PTE_SHIFT ) & (PMD_NUM - 1))
@@ -98,5 +109,11 @@ typedef struct {
 } pte_t __attribute__((aligned(0x1000)));
 
 #define pgent_paddr(ent) ((ent) & (~(PAGE_SIZE - 1)))
+
+static inline void
+_tlb_flush(vaddr_t va)
+{
+        __asm__ __volatile__("invlpg (%0)" : : "r"(va));
+}
 
 #endif

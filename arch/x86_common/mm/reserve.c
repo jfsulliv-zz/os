@@ -33,7 +33,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stddef.h>
 #include <mm/paging.h>
 #include <mm/reserve.h>
+#include <sys/kprintf.h>
 #include <sys/panic.h>
+
+static size_t reserve_low_watermark = 0;
 
 bool reserve_enabled = true;
 
@@ -50,12 +53,16 @@ disable_reserve(void)
 }
 
 paddr_t
-reserve_low_pages(memlimits_t *lim, unsigned int num)
+reserve_low_pages(memlimits_t *lim, size_t num)
 {
         paddr_t ret;
 
         bug_on(!lim, "NULL parameter");
-        bug_on(num + lim->low_pfn >= lim->high_pfn,
+
+        if (!reserve_low_watermark)
+                reserve_low_watermark = lim->high_pfn;
+
+        bug_on(num + lim->low_pfn >= reserve_low_watermark,
                "Low memory pool exhausted");
         bug_on(!can_reserve(), "Page reserved after PFA usage");
 
@@ -67,8 +74,30 @@ reserve_low_pages(memlimits_t *lim, unsigned int num)
         return ret;
 }
 
+/* These pages will be freed on disable_reserve(). */
 paddr_t
-reserve_high_pages(memlimits_t *lim, unsigned int num)
+reserve_low_pages_tmp(memlimits_t *lim, size_t num)
+{
+        paddr_t ret;
+
+        bug_on(!lim, "NULL parameter");
+
+        if (!reserve_low_watermark)
+                reserve_low_watermark = lim->high_pfn;
+        bug_on(num + lim->low_pfn >= reserve_low_watermark,
+               "Low memory pool exhausted");
+        bug_on(!can_reserve(), "Page reserved after PFA usage");
+
+        if (num == 0)
+                return 0;
+
+        reserve_low_watermark -= num;
+        ret = paddr_of(reserve_low_watermark);
+        return ret;
+}
+
+paddr_t
+reserve_high_pages(memlimits_t *lim, size_t num)
 {
         paddr_t ret;
 

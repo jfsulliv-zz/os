@@ -39,6 +39,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/gdt.h>
 #include <machine/tss.h>
 #include <sys/string.h>
+#include <sys/panic.h>
 #include <stdint.h>
 
 struct gdt_entry gdt[NUM_GDT_ENTRIES];
@@ -56,13 +57,13 @@ static struct gdt_entry gdte_null = {
         .present = 0,
         .limit_high = 0,
         .available = 0,
-        .always_0 = 0,
+        .long_mode = 0,
         .big = 0,
         .gran = 0,
         .base_high = 0
 };
 
-static struct gdt_entry gdte_code_ring0 = {
+static struct gdt_entry gdte_code = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -74,13 +75,13 @@ static struct gdt_entry gdte_code_ring0 = {
         .present = 1,
         .limit_high = 0xf,
         .available = 1,
-        .always_0 = 0,
-        .big = 1,
+        .long_mode = 1,
+        .big = 0,
         .gran = 1,
         .base_high = 0
 };
 
-static struct gdt_entry gdte_data_ring0 = {
+static struct gdt_entry gdte_data = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -92,78 +93,33 @@ static struct gdt_entry gdte_data_ring0 = {
         .present = 1,
         .limit_high = 0xf,
         .available = 1,
-        .always_0 = 0,
+        .long_mode = 0,
         .big = 1,
         .gran = 1,
         .base_high = 0
 };
 
-static struct gdt_entry gdte_code_ring3 = {
-        .limit_low = 0xffff,
-        .base_low  = 0,
-        .accessed  = 0,
-        .read_write = 1,
-        .conforming_expand_down = 0,
-        .code = 1,
-        .always_1 = 1,
-        .dpl = 3,
-        .present = 1,
-        .limit_high = 0xf,
-        .available = 1,
-        .always_0 = 0,
-        .big = 1,
-        .gran = 1,
-        .base_high = 0
-};
-
-static struct gdt_entry gdte_data_ring3 = {
-        .limit_low = 0xffff,
-        .base_low  = 0,
-        .accessed  = 0,
-        .read_write = 1,
-        .conforming_expand_down = 0,
-        .code = 0,
-        .always_1 = 1,
-        .dpl = 3,
-        .present = 1,
-        .limit_high = 0xf,
-        .available = 1,
-        .always_0 = 0,
-        .big = 1,
-        .gran = 1,
-        .base_high = 0
-};
-
-static struct gdt_entry gdte_tss = {
-        .limit_low = 0, // Set up dynamically
-        .base_low  = 0, // Set up dynamically
-        .accessed  = 1,
-        .read_write = 0,
-        .conforming_expand_down = 0,
-        .code = 1,
-        .always_1 = 0,
-        .dpl = 3,
-        .present = 1,
-        .limit_high = 0, // Set up dynamically
-        .available = 1,
-        .always_0 = 0,
-        .big = 0,
-        .gran = 0,
-        .base_high = 0 // Set up dynamically
-};
-
-extern void gdt_flush(unsigned long);
+extern void gdt_flush(uint64_t);
 
 static void
 gdt_set_gate(int gate, struct gdt_entry *e)
 {
+        bug_on(gate >= NUM_GDT_ENTRIES, "GDT entry extends beyond table");
         memcpy(&gdt[gate], e, sizeof(struct gdt_entry));
+}
+
+static void
+gdt_set_gate_ext(int gate, struct gdt_entry_ext *e)
+{
+        bug_on(gate + 1 >= NUM_GDT_ENTRIES, "GDT entry extends beyond table");
+        memcpy(&gdt[gate], e, sizeof(struct gdt_entry_ext));
 }
 
 void
 gdt_install(void)
 {
-        gp.base = (unsigned long)&gdt;
+        return;
+        gp.base = (uint64_t)&gdt;
         gp.limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
 
         /* Default NULL gate */
@@ -171,16 +127,10 @@ gdt_install(void)
 
         /* Set up a flat memory layout with separate CS/DS sections for
          * privileged and non-privileged segments. */
-        gdt_set_gate(GDT_KCODE_IND, &gdte_code_ring0);
-        gdt_set_gate(GDT_KDATA_IND, &gdte_data_ring0);
-        gdt_set_gate(GDT_UCODE_IND, &gdte_code_ring3);
-        gdt_set_gate(GDT_UDATA_IND, &gdte_data_ring3);
+        gdt_set_gate(GDT_CODE_IND, &gdte_code);
+        gdt_set_gate(GDT_DATA_IND, &gdte_data);
 
-        /* Set up our TSS */
-        tss_setup_gdte(&gdte_tss);
-        gdt_set_gate(GDT_TSS_IND, &gdte_tss);
-
-        gdt_flush((unsigned long)&gp);
+        gdt_flush((uint64_t)&gp);
 
         tss_install();
 

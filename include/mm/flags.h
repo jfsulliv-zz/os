@@ -38,16 +38,18 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define M_WAIT_BIT 0
 #define M_HIGH_BIT 1
 #define M_DMA_BIT  2
+#define M_ZERO_BIT 3
 #define MFLAGS_GOOD_MASK (GENMASK(3, 0))
 #define BAD_MFLAGS(f) ((f) & ~MFLAGS_GOOD_MASK)
 
 #define M_WAIT     (1 << M_WAIT_BIT)
 #define M_HIGH     (1 << M_HIGH_BIT)
 #define M_DMA      (1 << M_DMA_BIT)
+#define M_ZERO     (1 << M_ZERO_BIT)
 
 #define M_BUFFER   (         M_WAIT)
 #define M_ATOMIC   (0)
-#define M_USER     (M_HIGH | M_WAIT)
+#define M_USER     (M_HIGH | M_WAIT | M_ZERO)
 #define M_KERNEL   (         M_WAIT)
 
 typedef uint32_t mflags_t;

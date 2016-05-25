@@ -56,6 +56,9 @@ extern pmm_t init_pmm;
 void
 pmm_init(memlimits_t *);
 
+bool
+pmm_initialized(void);
+
 /* Make advanced pmm features available. To be called after the vma
  * subsystem is online. */
 void

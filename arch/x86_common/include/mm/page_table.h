@@ -63,8 +63,7 @@ typedef unsigned int pgflags_t;
 
 #define PAGE_TAB  (_PAGE_PRESENT | _PAGE_USER | _PAGE_RW | \
                    _PAGE_ACCESSED | _PAGE_DIRTY)
-#define KPAGE_TAB (_PAGE_PRESENT | _PAGE_RW | _PAGE_ACCESSED | \
-                   _PAGE_DIRTY)
+#define KPAGE_TAB (_PAGE_PRESENT | _PAGE_RW )
 
 static inline pgflags_t
 pt_flags(mflags_t mflags, pflags_t pflags)

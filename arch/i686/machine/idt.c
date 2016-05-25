@@ -87,17 +87,19 @@ const char *exception_messages[INT_EXCEPTION_LIMIT] = {
         "Reserved"
 };
 
-void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel,
-                unsigned char flags)
+void idt_set_gate(unsigned char num, uint64_t base, uint16_t sel,
+                  uint8_t flags)
 {
         /* Set base address */
-        idt[num].base_lo   = base & 0xFFFF;
-        idt[num].base_hi   = (base >> 16) & 0xFFFF;
+        idt[num].base_low  = base & 0xFFFF;
+        idt[num].base_mid  = (base >> 16) & 0xFFFF;
+        idt[num].base_high = (base >> 32);
 
         /* Set flags and selector */
-        idt[num].sel       = sel;
-        idt[num].type_attr = flags;
-        idt[num].zero      = 0;
+        idt[num].sel    = sel;
+        idt[num].flags  = flags;
+        idt[num].always_0 = 0;
+        idt[num].always_0_2 = 0;
 }
 
 void idt_install_exception_handlers(void)
@@ -105,7 +107,7 @@ void idt_install_exception_handlers(void)
         int i;
         for (i = INT_EXCEPTION_BASE; i < INT_EXCEPTION_LIMIT; i++)
         {
-                idt_set_gate(i, (unsigned long)idt_exception_handlers[i],
+                idt_set_gate(i, (uint64_t)idt_exception_handlers[i],
                              0x08, IDT_32_INTERRUPT);
         }
 }

@@ -33,6 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/paging.h>
 #include <mm/pfa.h>
 #include <sys/kprintf.h>
+#include <sys/stdio.h>
 #include <sys/panic.h>
 
 static inline bool
@@ -44,7 +45,7 @@ is_kernel_fault(unsigned long addr)
 static void
 handle_fault(struct regs *r, paddr_t fault_addr)
 {
-        kprintf(0, "Page fault at 0x%08x\n", fault_addr);
+        kprintf(0, "Page fault at " PFMT "\n", fault_addr);
         if (is_kernel_fault(fault_addr)) {
                 panic("TODO - kernel faults");
         } else {

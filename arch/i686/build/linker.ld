@@ -1,37 +1,48 @@
-ENTRY (_start)
-OUTPUT_FORMAT(elf32-i686)
+OUTPUT_FORMAT(elf64-x86-64)
+ENTRY(_start)
+KERNEL_MAP = 0xffffffff80000000;
+KERNEL_LMA =           0x100000;
+KERNEL_VMA = KERNEL_MAP + KERNEL_LMA;
 
 SECTIONS
-{
-  . = 0xffffffff80000000;
-  kernel_start = .;
-
-  .multiboot ALIGN (4096) : AT(ADDR(.multiboot) - 0xffffffff80000000) {
-    *(.multiboot)
+{ 
+  . = 0x1000;
+  .multiboot ALIGN (16) :
+  {
+      *bootstrap.o(.multiboot)
   }
 
-  .tables : AT(ADDR(.tables) - 0xffffffff80000000) {
+  . += KERNEL_LMA;
+
+  .bootstrap : AT(ADDR(.bootstrap) - KERNEL_LMA)
+  {
+      *bootstrap.o(.text)
+  }
+
+  . += KERNEL_MAP;
+  kernel_start = .;
+
+  .text ALIGN (4096) : AT(ADDR(.text) - KERNEL_MAP) {
+      *(EXCLUDE_FILE(*bootstrap.o) .text)
+  }
+
+  .data ALIGN (4096) : AT(ADDR(.data) - KERNEL_MAP) {
+      *(.data)
       *(.tables)
   }
 
-  .text ALIGN (4096) : AT(ADDR(.text) - 0xffffffff80000000) {
-      *(.text)
-  }
-
-  .data ALIGN (4096) : AT(ADDR(.data) - 0xffffffff80000000) {
-      *(.data)
-  }
-
-  .rodata ALIGN (4096) : AT(ADDR(.rodata) - 0xffffffff80000000) {
+  .rodata ALIGN (4096) : AT(ADDR(.rodata) - KERNEL_MAP) {
       *(.rodata*)
   }
 
-  .bss : AT(ADDR(.bss) - 0xffffffff80000000) {
+  .bss ALIGN (4096) : AT(ADDR(.bss) - KERNEL_MAP) {
       sbss = .;
-      *(COMMON)
       *(.bss)
+      *(COMMON)
       ebss = .;
+      . = ALIGN(0x1000);
   }
   . = ALIGN(16);
   kernel_end = .;
+  kernel_sz = kernel_end - kernel_start;
 }

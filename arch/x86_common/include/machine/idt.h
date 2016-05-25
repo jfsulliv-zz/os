@@ -72,9 +72,6 @@ extern struct idt_entry idt[NUM_IDT_ENTRIES];
 extern struct idt_ptr   idtp;
 
 extern const char *exception_messages[INT_EXCEPTION_LIMIT];
-
-void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel,
-                  unsigned char flags);
 void idt_install(void);
 
 extern void isr0();

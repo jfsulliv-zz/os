@@ -32,6 +32,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _SYS_KSYMS_H_
 #define _SYS_KSYMS_H_
 
+#include <machine/types.h>
 #include <multiboot.h>
 
 /*
@@ -43,20 +44,20 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 /* A single ksyms record. */
 typedef struct ksyms_entry {
-        unsigned long addr;
-        const char   *name;
+        vaddr_t     addr;
+        const char *name;
 } ksyms_entry_t;
 
 int
 ksyms_init(multiboot_info_t *mbd);
 
 ksyms_entry_t *
-ksyms_find(unsigned long addr);
+ksyms_find(vaddr_t addr);
 
 const char *
-ksyms_find_func(unsigned long addr);
+ksyms_find_func(vaddr_t addr);
 
 char *
-ksyms_report_eip(unsigned long addr);
+ksyms_report_eip(vaddr_t addr);
 
 #endif

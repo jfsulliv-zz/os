@@ -44,7 +44,7 @@ _start:
         mov edx, RELOC(kernel_end)
 .2:     stosd
         add eax, 0x1000
-        cmp edi, RELOC(pg0_end)
+        cmp edi, RELOC(pg1_end)
         sub edx, 0x1000
         jns  $-0x12
 
@@ -108,17 +108,22 @@ align 0x1000
 global init_pgd
 global pg0
 init_pgd:
-        ; The first 4MB will be ID mapped.
+        ; The first 8MB will be ID mapped.
         dd 0x00102007
-        times (UNUM_PAGETABS-1) dd 0x0
+        dd 0x00103007
+        times (UNUM_PAGETABS-2) dd 0x0
         ; Duplicate the kern map at the start of the kernel address space
         dd 0x00102007
-        times (KNUM_PAGETABS-1) dd 0x0
+        dd 0x00103007
+        times (KNUM_PAGETABS-2) dd 0x0
 init_pgd_end:
 ; These will be dynamically filled for the identity mapping
 pg0:
         times 4096 db 0x0
 pg0_end:
+pg1:
+        times 4096 db 0x0
+pg1_end:
 ; We will use this for the boot parameters and kernel command line.
 empty_zero_page:
         times 4096 db 0x0

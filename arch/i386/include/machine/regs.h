@@ -46,7 +46,7 @@ struct regs
 static inline unsigned int
 get_cr2(void)
 {
-        unsigned int ret;
+        uint32_t ret;
         __asm__ __volatile__(
                 "mov %%cr2, %0"
                 : "=a" (ret));
@@ -54,11 +54,11 @@ get_cr2(void)
 }
 
 static inline void
-set_cr3(unsigned long val)
+set_cr3(uint32_t val)
 {
         __asm__ __volatile__(
                 "mov %0, %%cr3"
-                : "=r" (val));
+                : : "r" (val));
 }
 
 void dump_regs_from(struct regs *r);

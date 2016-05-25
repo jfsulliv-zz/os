@@ -48,6 +48,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/debug.h>
 #include <sys/kprintf.h>
 #include <sys/string.h>
+#include <sys/stdio.h>
 #include <sys/size.h>
 #include <sys/panic.h>
 #include <util/cmp.h>
@@ -109,7 +110,7 @@ pfa_init(memlimits_t *limits)
         pages_phys = reserve_low_pages(limits, pages_npg);
         pfa.pages = (page_t *)_va(pages_phys);
         bug_on(pmm_map_range(&init_pmm, (vaddr_t)pfa.pages, pages_npg,
-                             pages_phys, M_KERNEL, PFLAGS_RW),
+                             pages_phys, M_ZERO | M_KERNEL, PFLAGS_RW),
                 "Failed to map pagelist to virtual address.");
 
         /* Do the same for our tag bits. */
@@ -117,15 +118,13 @@ pfa_init(memlimits_t *limits)
         tag_bits_phys = reserve_low_pages(limits, tag_bits_npg);
         pfa.tag_bits = (unsigned long *)_va(tag_bits_phys);
         bug_on(pmm_map_range(&init_pmm, (vaddr_t)pfa.tag_bits,
-                             tag_bits_npg, tag_bits_phys, M_KERNEL,
+                             tag_bits_npg, tag_bits_phys, M_ZERO | M_KERNEL,
                              PFLAGS_RW),
                 "Failed to map tag bits to virtual address.");
 
         for (i = 0; i < all_pages; i++) {
                 list_head_init(&pfa.pages[i].list);
-                pfa.pages[i].vaddr = 0;
         }
-        bzero(pfa.tag_bits, (all_pages >> 3));
 
         /* Initialize the free page lists */
         for (i = 0; i < PFA_MAX_PAGE_ORDER; i++)
@@ -375,14 +374,18 @@ pfa_report(bool full)
                 "low", B_MiB(lowmem_bytes_avail(&mem_limits)),
                 "high", B_MiB(highmem_bytes_avail(&mem_limits)));
 
-        kprintf(0, "====== DMA Region =====\n");
-        kprintf(0, "0x%08x - 0x%08x\n", dma_base(pfa.limits),
+        char buf[80];
+        banner(buf, 4 + 3 + 1 + (WORD_SIZE / 2), '=', " DMA Region ");
+        kprintf(0, "%s\n", buf);
+        kprintf(0, PFMT" - "PFMT"\n", dma_base(pfa.limits),
                         dma_top(pfa.limits));
-        kprintf(0, "====== Low Region =====\n");
-        kprintf(0, "0x%08x - 0x%08x\n", lowmem_base(pfa.limits),
-                        lowmem_top(pfa.limits));
-        kprintf(0, "===== High Region =====\n");
-        kprintf(0, "0x%08x - 0x%08x\n", highmem_base(pfa.limits),
+        banner(buf, 4 + 3 + 1 + (WORD_SIZE / 2), '=', " Low Region ");
+        kprintf(0, "%s\n", buf);
+        kprintf(0, PFMT" - "PFMT"\n", _va(lowmem_base(pfa.limits)),
+                        _va(lowmem_top(pfa.limits)));
+        banner(buf, 4 + 3 + 1 + (WORD_SIZE / 2), '=', " High Region ");
+        kprintf(0, "%s\n", buf);
+        kprintf(0, PFMT" - "PFMT"\n", highmem_base(pfa.limits),
                         highmem_top(pfa.limits));
 }
 

@@ -42,19 +42,18 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/paging.h>
 #include <sys/kprintf.h>
 #include <sys/panic.h>
+#include <sys/stdio.h>
 
 extern char kernel_end;
-unsigned long highstart_pfn, highend_pfn;
 
 memlimits_t mem_limits = { 0, 0, 0, 0, 0};
 
 void
 arch_init(multiboot_info_t *mbd)
 {
-        unsigned long start_pfn, max_pfn;
+        size_t start_pfn, max_pfn;
 
         /* Set up memory segmentation. */
-        disable_interrupts();
         gdt_install();
 
         /* First up, set up a basic output device. */
@@ -62,24 +61,17 @@ arch_init(multiboot_info_t *mbd)
         kprintf_set_output_device(tty_get_output_device());
         kprintf(0,"Hello, world!\n");
 
-        /* Register our interrupt handlers. */
+        /* Register our IDT and exception handlers. */
         idt_install();
-        irq_install();
-        pic_remap(PIC1_OFFSET, PIC2_OFFSET);
         kprintf(0,"System tables installed.\n");
-
-        timer_install();
-        timer_phase(1000);
-
-        enable_interrupts();
-        kprintf(0,"Enabled interrupts.\n");
 
         /* Find out our memory limits. */
         if (!(mbd->flags & 1)) {
-                return; // TODO manual memory map detection
+                // TODO manual memory map
+                panic("No memory map available.\n");
         }
         start_pfn = PFN_UP(_pa(&kernel_end)); /* Next page after kernel */
-        max_pfn   = PFN_DOWN(1024 * mbd->mem_upper);
+        max_pfn   = PFN_DOWN(1024ULL * mbd->mem_upper);
         mem_limits.dma_pfn = 1;
         mem_limits.dma_pfn_end  = (KERN_OFFS / PAGE_SIZE);
         mem_limits.low_pfn  = start_pfn;
@@ -87,4 +79,16 @@ arch_init(multiboot_info_t *mbd)
                         "DMA overflow");
         mem_limits.high_pfn = start_pfn + ((max_pfn - start_pfn) >> 2);
         mem_limits.max_pfn  = max_pfn;
+        kprintf(0, "["PFMT " - " PFMT "] kernel\n", KERN_BASE, KERN_BASE +
+                        lowmem_bytes_avail(&mem_limits));
+        kprintf(0, PFMT" bytes\n", lowmem_bytes_avail(&mem_limits));
+}
+
+void
+arch_init_irqs(void)
+{
+        irq_install();
+        pic_remap(PIC1_OFFSET, PIC2_OFFSET);
+        timer_install();
+        timer_phase(1000);
 }

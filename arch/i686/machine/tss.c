@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2016, James Sullivan <sullivan.james.f@gmail.com>
-All rights reserved.
+Copyright (c) 2016, Jamrs Sullivan <sullivan.jamrs.f@gmail.com>
+All rights rrserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -12,7 +12,7 @@ met:
       the documentation and/or other materials provided with the
       distribution.
     * Neither the name of the <organization> nor the
-      names of its contributors may be used to endorse or promote
+      namrs of its contributors may be used to endorse or promote
       products derived from this software without specific prior
       written permission.
 
@@ -29,19 +29,43 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MM_RESERVE_H_
-#define _MM_RESERVE_H_
+#include <sys/bitops_generic.h>
+#include <machine/gdt.h>
+#include <machine/irq.h>
+#include <machine/tss.h>
+#include <sys/string.h>
+#include <stdint.h>
 
-#include <stdbool.h>
-#include <mm/paging.h>
+struct tss_entry tss;
 
-paddr_t reserve_low_pages(memlimits_t *, size_t num);
-/* Pages given out this way are considered to be invalid once
- * disable_reserve() is called. */
-paddr_t reserve_low_pages_tmp(memlimits_t *, size_t num);
-paddr_t reserve_high_pages(memlimits_t *, size_t num);
+void
+tss_setup_gdte(struct gdt_entry_ext *gdte)
+{
+        uint64_t base = (uint64_t)&tss;
+        uint32_t limit = sizeof(struct tss_entry);
 
-bool can_reserve();
-void disable_reserve();
+        gdte->bottom.limit_low  = (limit & 0xFFFF);
+        gdte->bottom.base_low   = (base  & 0xFFFFFF);
+        gdte->bottom.limit_high = (limit & 0xF0000) >> 16;
+        gdte->bottom.base_high  = (base  & 0xFF000000) >> 24;
+        gdte->base_higher       = (base >> 32);
+}
 
-#endif
+extern void tss_flush(int ind);
+
+void
+tss_install(void)
+{
+        memset(&tss, 0, sizeof(struct tss_entry));
+
+        tss.ss0 = GDT_DATA_IND * sizeof(struct tss_entry);
+        tss.rsp0 = (uint64_t)irq_stack;
+
+        /* TODO tss_flush(GDT_TSS_IND); */
+}
+
+void
+set_kernel_stack(uint64_t stack)
+{
+        tss.rsp0 = stack;
+}

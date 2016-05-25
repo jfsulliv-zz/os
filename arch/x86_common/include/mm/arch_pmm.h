@@ -34,11 +34,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <machine/types.h>
 #include <mm/arch_paging.h>
+#include <mm/paging.h>
 
 typedef struct {
         paddr_t pgdir_paddr;
         pgd_t  *pgdir;
         size_t  refct;
+        memlimits_t *lim;
 } pmm_t;
 
 #endif

@@ -33,6 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/regs.h>
 #include <machine/arch_init.h>
 #include <machine/timer.h>
+#include <machine/irq.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
 #include <mm/pmm.h>
@@ -42,13 +43,15 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/ksyms.h>
 #include <sys/kprintf.h>
 #include <sys/proc.h>
+#include <sys/stdio.h>
 
 int
 main(multiboot_info_t *mbd)
 {
         /* Set up the hardware as needed. */
+        disable_interrupts();
         arch_init(mbd);
-        timer_install();
+        kprintf(0, "Finished arch init\n");
         /* Set up the pmm subsystem */
         pmm_init(&mem_limits);
         /* Set up the page frame allocator */
@@ -65,6 +68,19 @@ main(multiboot_info_t *mbd)
         /* Set up the process tables and pid 1 */
         proc_system_init();
         kprintf(0, "Initialized process tables, init process\n");
+
+        /* Now that we have all of that stuff, we can get ready for
+         * IRQs. */
+        arch_init_irqs();
+        enable_interrupts();
+        kprintf(0, "Enabled interrupts\n");
+
+        kprintf(0, "Idling!\n");
+        while (1)
+        {
+                timer_wait(1000);
+                kprintf(0, "x");
+        }
 
         for (;;);
 }

@@ -59,92 +59,92 @@ phys_addr(page_t *base, page_t *page)
 }
 
 typedef struct {
-        unsigned long max_pfn;
-        unsigned long high_pfn;
-        unsigned long low_pfn;
-        unsigned long dma_pfn_end;
-        unsigned long dma_pfn;
+        size_t max_pfn;
+        size_t high_pfn;
+        size_t low_pfn;
+        size_t dma_pfn_end;
+        size_t dma_pfn;
 } memlimits_t;
 
-static inline unsigned long
+static inline paddr_t
 mem_max(memlimits_t *lim)
 {
         return (lim->max_pfn * PAGE_SIZE);
 }
 
-static inline unsigned long
+static inline size_t
 dma_start(memlimits_t *lim)
 {
         return (lim->dma_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 dma_end(memlimits_t *lim)
 {
         return (lim->dma_pfn_end);
 }
 
-static inline unsigned long
+static inline size_t
 dma_pages_avail(memlimits_t *lim)
 {
         return (lim->dma_pfn_end - lim->dma_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 dma_bytes_avail(memlimits_t *lim)
 {
         return (PAGE_SIZE * dma_pages_avail(lim));
 }
 
-static inline unsigned long
+static inline size_t
 lowmem_start(memlimits_t *lim)
 {
         return (lim->low_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 lowmem_end(memlimits_t *lim)
 {
         return (lim->high_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 lowmem_pages_avail(memlimits_t *lim)
 {
         return (lim->high_pfn - lim->low_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 lowmem_bytes_avail(memlimits_t *lim)
 {
         return (PAGE_SIZE * lowmem_pages_avail(lim));
 }
 
-static inline unsigned long
+static inline size_t
 highmem_start(memlimits_t *lim)
 {
         return (lim->high_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 highmem_end(memlimits_t *lim)
 {
         return (lim->max_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 highmem_pages_avail(memlimits_t *lim)
 {
         return (lim->max_pfn - lim->high_pfn);
 }
 
-static inline unsigned long
+static inline size_t
 highmem_bytes_avail(memlimits_t *lim)
 {
         return (PAGE_SIZE * highmem_pages_avail(lim));
 }
 
-static inline unsigned long
+static inline size_t
 allmem_pages_avail(memlimits_t *lim)
 {
         return (highmem_pages_avail(lim)
@@ -152,43 +152,43 @@ allmem_pages_avail(memlimits_t *lim)
                 + dma_pages_avail(lim));
 }
 
-static inline unsigned long
+static inline size_t
 allmem_bytes_avail(memlimits_t *lim)
 {
         return (PAGE_SIZE * allmem_pages_avail(lim));
 }
 
-static inline unsigned long
+static inline paddr_t
 dma_base(memlimits_t *lim)
 {
         return (PAGE_SIZE * lim->dma_pfn);
 }
 
-static inline unsigned long
+static inline paddr_t
 dma_top(memlimits_t *lim)
 {
         return (PAGE_SIZE * lim->dma_pfn_end);
 }
 
-static inline unsigned long
+static inline paddr_t
 lowmem_base(memlimits_t *lim)
 {
         return (PAGE_SIZE * lim->low_pfn);
 }
 
-static inline unsigned long
+static inline paddr_t
 lowmem_top(memlimits_t *lim)
 {
         return (PAGE_SIZE * lim->high_pfn);
 }
 
-static inline unsigned long
+static inline paddr_t
 highmem_base(memlimits_t *lim)
 {
         return (PAGE_SIZE * lim->high_pfn);
 }
 
-static inline unsigned long
+static inline paddr_t
 highmem_top(memlimits_t *lim)
 {
         return (PAGE_SIZE * lim->max_pfn);

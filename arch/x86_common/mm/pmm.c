@@ -37,7 +37,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/pfa.h>
 #include <mm/vma.h>
 #include <sys/errno.h>
+#include <sys/kprintf.h>
+#include <sys/stdio.h>
 #include <sys/panic.h>
+#include <sys/string.h>
+#include <stdbool.h>
+
+static bool initialized = false;
 
 /* Init proc's page directory and pmm */
 extern pgd_t init_pgd;
@@ -70,79 +76,103 @@ pmm_dtor(void *p, __attribute__((unused)) size_t sz)
 }
 
 static void
-map_region(pgent_t *ent, size_t num, paddr_t base, paddr_t top,
-           paddr_t inc)
+map_region(pgent_t *ent, size_t num, vaddr_t base, vaddr_t top,
+           int ind, int max_ind)
 {
-        unsigned long i = 0;
-        for (; i < num; i++, base += inc)
+        unsigned int i;
+        for (i = 0;
+             i < num && ind < max_ind;
+             i++, ind++, base += PAGE_SIZE)
         {
-                if (base >= top)
+                if (top && base >= top) {
                         break;
-                ent[i] = base | KPAGE_TAB;
+                }
+                ent[ind] = _pa(base) | KPAGE_TAB;
         }
 }
 
 static void
 init_mapping(pud_t *puds, size_t npuds, pmd_t *pmds, size_t npmds,
-             pte_t *ptes, size_t nptes, paddr_t base, paddr_t top)
+             pte_t *ptes, size_t nptes, vaddr_t base, vaddr_t top)
 {
-        map_region((pgent_t *)ptes, (nptes * PTE_SIZE), base, top,
-                   (1 << PAGE_SHIFT));
-        map_region((pgent_t *)pmds, (npmds * PMD_SIZE), _pa(ptes), top,
-                   (1 << PTE_SHIFT));
-        map_region((pgent_t *)puds, (npuds * PUD_SIZE), _pa(pmds), top,
-                   (1 << PMD_SHIFT));
+        map_region((pgent_t *)ptes, PTE_NUM * nptes, base, top,
+                   0, PTE_NUM * nptes);
+        map_region((pgent_t *)pmds, nptes, (vaddr_t)ptes, top,
+                   PMD_IND(base), PMD_NUM * npuds);
+        map_region((pgent_t *)puds, npmds, (vaddr_t)pmds, top,
+                   PUD_IND(base), PUD_NUM);
 }
 
 /* Set up the pmm layer (initial page mappings, etc.) */
+/* What we want to do here is to move all of our temporary kernel tables
+ * into a new contiguous fixed location, except the page directory
+ * itself which will stay placed.
+ * This involves the following:
+ *  1) Reserve enough pages to hold a full set of kernel page tables
+ *  2) Set up these reserved pages to map everything from 0x0 to the
+ *     end of the kernel (plus our additional allocations)
+ *  3) Swap in the new PUDs into the PGD and flush the TLB
+ *
+ * The only 'gotcha' here is that our reserved pages are not mapped,
+ * and we might need more page tables than we have statically allocated.
+ * To get around this, we will reserve a few extra (temporary) page
+ * tables as needed, and use them for mappings.
+ */
 void
 pmm_init(memlimits_t *lim)
 {
-        unsigned long tables_region_sz;
-        paddr_t tables_region, tables_region_end;
+        size_t tables_region_sz;
+        paddr_t tables_region;
         unsigned long pg0_index = PGD_IND(_va(lowmem_start(lim)));
+        size_t num_ptes, num_pmds, num_puds;
 
         init_pmm.pgdir = &init_pgd;
         init_pmm.pgdir_paddr = _pa(init_pmm.pgdir);
+        init_pmm.lim = lim;
 
         /* Determine how much space we need to hold a full set of kernel
          * page tables, keeping our original pgdir intact. */
-        tables_region_sz = ( (PUD_SIZE * PUD_COUNT)
-                           + (PMD_SIZE * PMD_COUNT)
-                           + (PTE_SIZE * PTE_COUNT));
-        tables_region_sz /= 4;
+        num_ptes = PTES_NEEDED(lowmem_bytes_avail(lim));
+        num_pmds = PMDS_NEEDED(lowmem_bytes_avail(lim));
+        num_puds = PUDS_NEEDED(lowmem_bytes_avail(lim));
+        tables_region_sz = ( (PTE_SIZE * num_ptes)
+                           + (PMD_SIZE * num_pmds)
+                           + (PUD_SIZE * num_puds));
 
         /* Reserve enough memory to hold all of our page tables. Note
          * that we have *not* mapped them yet and we will definitely
          * page fault if we try to access them. */
         tables_region = reserve_low_pages(lim, PFN_UP(tables_region_sz));
-        tables_region_end = tables_region + tables_region_sz;
 
         /* Map all of this region in so we can access it. */
         pmm_map_range(&init_pmm, _va(tables_region),
                       PFN_UP(tables_region_sz), tables_region,
-                      M_KERNEL, PFLAGS_RW);
+                      M_ZERO | M_KERNEL, PFLAGS_RW);
 
         /* Now we set up this region to be properly mapped with respect
          * to itself. */
-        size_t npuds, npmds, nptes;
         pud_t *puds = (pud_t *)_va(tables_region);
-        npuds = PUD_COUNT / 4;
-        pmd_t *pmds = (pmd_t *)_va(tables_region + (PUD_SIZE * npuds));
-        npmds = PMD_COUNT / 4;
-        pte_t *ptes = (pte_t *)_va(tables_region + (PUD_SIZE * npuds)
-                                                 + (PMD_SIZE * npmds));
-        nptes = PTE_COUNT / 4;
-        init_mapping(puds, npuds, pmds, npmds, ptes, nptes, 0,
-                     tables_region_end);
+        pmd_t *pmds = (pmd_t *)_va(tables_region + (PUD_SIZE * num_puds));
+        pte_t *ptes = (pte_t *)_va(tables_region + (PUD_SIZE * num_puds)
+                                                 + (PMD_SIZE * num_pmds));
+        init_mapping(puds, num_puds, pmds, num_pmds, ptes, num_ptes,
+                     KERN_BASE, _va(lowmem_top(lim)));
 
         /* Load our actual page directory up with the new tables. */
-        map_region((pgent_t *)init_pmm.pgdir->ents + pg0_index,
-                   PGD_NUM - pg0_index, _pa(puds),
-                   tables_region_end, PGD_SIZE);
+        map_region(init_pmm.pgdir->ents,
+                   PGD_NUM - pg0_index,
+                   (vaddr_t)puds,
+                   _va(lowmem_top(lim)), pg0_index, PGD_NUM);
 
         /* Invalidate the TLB to load the new tables up. */
         pmm_activate(&init_pmm);
+        initialized = true;
+}
+
+bool
+pmm_initialized(void)
+{
+        return initialized;
 }
 
 /* Make advanced pmm features available. To be called after the vma
@@ -303,47 +333,86 @@ pmm_reference(pmm_t *p)
         p->refct++;
 }
 
+static paddr_t
+map_getpage(pmm_t *pmm)
+{
+        paddr_t ret;
+        bug_on(!pmm_initialized(), "Initial page tables are not big enough.");
+        if (pfa_ready()) {
+                page_t *pg = pfa_alloc(M_KERNEL);
+                ret = pg ? phys_addr(pfa_base(), pg) : 0;
+        } else {
+                ret = reserve_low_pages(pmm->lim, 1);
+        }
+        return ret;
+}
+
 static inline int
 pte_map(pte_t *pte, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
 {
-        pte->ents[PTE_IND(va)] = (pa | pt_flags(flags, pflags));
+        pte->ents[PTE_IND(va)] = (pa | (paddr_t)pt_flags(flags, pflags));
         return 0;
 }
 
 #if PMD_BITS == 0
-#define pmd_map(pmd, va, pa, flags, pflags) \
-        pte_map((pte_t *)pmd, va, pa, flags, pflags)
+#define pmd_map(pmm, pmd, va, pa, flags, pflags) \
+        pte_map((pte_t *)(pmd), va, pa, flags, pflags)
 #else
 static inline int
-pmd_map(pmd_t *pmd, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
+pmd_map(pmm_t *pmm, pmd_t *pmd, vaddr_t va, paddr_t pa, mflags_t flags,
+        pflags_t pflags)
 {
-        pte_t *pte = (pte_t *)_va(pgent_paddr(pmd->ents[PUD_IND(va)]));
-        if (!pte)
-                return 1;
+        pte_t *pte;
+        paddr_t p = pgent_paddr(pmd->ents[PMD_IND(va)]);
+        pte = (pte_t *)(p == 0 ? 0 : _va(p));
+        if (!pte) {
+                p = map_getpage(pmm);
+                if (!p)
+                        return ENOMEM;
+                pte = (pte_t *)_va(p);
+                pmd->ents[PMD_IND(va)] = (p | KPAGE_TAB);
+        }
         return pte_map(pte, va, pa, flags, pflags);
 }
 #endif
 
 #if PUD_BITS == 0
-#define pud_map(pud, va, pa, flags, pflags) \
-        pmd_map((pmd_t *)pud, va, pa, flags, pflags)
+#define pud_map(pmm, pud, va, pa, flags, pflags) \
+        pmd_map(pmm, (pmd_t *)(pud), va, pa, flags, pflags)
 #else
 static inline int
-pud_map(pud_t *pud, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
+pud_map(pmm_t *pmm, pud_t *pud, vaddr_t va, paddr_t pa, mflags_t flags,
+        pflags_t pflags)
 {
-        pmd_t *pmd = (pmd_t *)_va(pgent_paddr(pud->ents[PUD_IND(va)]));
-        if (!pmd)
-                return 1;
-        return pmd_map(pmd, va, pa, flags, pflags);
+        pmd_t *pmd;
+        paddr_t p = pgent_paddr(pud->ents[PUD_IND(va)]);
+        pmd = (pmd_t *)(p == 0 ? 0 : _va(p));
+        if (!pmd) {
+                p = map_getpage(pmm);
+                if (!p)
+                        return ENOMEM;
+                pmd = (pmd_t *)_va(p);
+                pud->ents[PUD_IND(va)] = (p | KPAGE_TAB);
+        }
+        return pmd_map(pmm, pmd, va, pa, flags, pflags);
 }
 #endif
 
 static int
-pgd_map(pgd_t *pgd, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
+pgd_map(pmm_t *pmm, pgd_t *pgd, vaddr_t va, paddr_t pa, mflags_t flags,
+        pflags_t pflags)
 {
-        unsigned long ind = PGD_IND(va);
-        pud_t *pud = (pud_t *)_va(pgent_paddr(pgd->ents[ind]));
-        return pud ? pud_map(pud, va, pa, flags, pflags) : 1;
+        pud_t *pud;
+        paddr_t p = pgent_paddr(pgd->ents[PGD_IND(va)]);
+        pud = (pud_t *)(p == 0 ? 0 : _va(p));
+        if (!pud) {
+                p = map_getpage(pmm);
+                if (!p)
+                        return ENOMEM;
+                pud = (pud_t *)_va(p);
+                pgd->ents[PGD_IND(va)] = (p | KPAGE_TAB);
+        }
+        return pud_map(pmm, pud, va, pa, flags, pflags);
 }
 
 /* Create a mapping from the given vaddr region into the physical
@@ -351,14 +420,27 @@ pgd_map(pgd_t *pgd, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
 int
 pmm_map(pmm_t *p, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
 {
-        return pgd_map(p->pgdir, va, pa, flags, pflags);
+        static int depth = 0;
+#define PMM_MAX_DEPTH 8
+        if (++depth > PMM_MAX_DEPTH) {
+                panic("Maximum pmm_map depth execeeded");
+        }
+        int ret = pgd_map(p, p->pgdir, va, pa, flags, pflags);
+        if (ret) {
+                --depth;
+                return ret;
+        }
+        if (flags & M_ZERO)
+                bzero((void *)va, PAGE_SIZE);
+        --depth;
+        return 0;
 }
 
 /* Remove the virtual mapping for vaddr. Assumes va is page aligned. */
 void
 pmm_unmap(pmm_t *p, vaddr_t va)
 {
-        pgd_map(p->pgdir, va, 0, 0, 0);
+        pgd_map(p, p->pgdir, va, 0, 0, 0);
 }
 
 /* Hint to the implementation that all mappings will be removed shortly
@@ -387,7 +469,7 @@ pmd_find(pmd_t *p, vaddr_t va)
 {
         if (!p)
                 return NULL;
-        return pte_find((pte_t *)p->ents + PMD_IND(va));
+        return pte_find((pte_t *)p->ents + PMD_IND(va), va);
 }
 #endif
 
@@ -399,7 +481,7 @@ pud_find(pud_t *p, vaddr_t va)
 {
         if (!p)
                 return NULL;
-        return pmd_find((pmd_t *)p->ents + PUD_IND(va));
+        return pmd_find((pmd_t *)p->ents + PUD_IND(va), va);
 }
 #endif
 

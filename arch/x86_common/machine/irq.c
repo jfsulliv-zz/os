@@ -62,7 +62,7 @@ void irq_install(void)
         for (i = INT_IRQ_BASE; i < INT_IRQ_LIMIT; i++)
         {
                 idt_set_gate(i,
-                        (unsigned int)idt_irq_handlers[i - INT_IRQ_BASE],
+                        (vaddr_t)idt_irq_handlers[i - INT_IRQ_BASE],
                         0x08, IDT_32_INTERRUPT);
         }
         memset (irq_routines, 0, sizeof(void *) * INT_IRQ_NUM);

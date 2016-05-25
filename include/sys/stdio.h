@@ -39,9 +39,16 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 04/16
  */
 
+#include <machine/params.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+#if WORD_SIZE == 32
+#define PFMT    "0x%08x"
+#else
+#define PFMT    "0x%016x"
+#endif
 
 int snprintf(char *str, size_t size, const char *format, ...);
 int slprintf(char *str, size_t size, const char *format, ...);

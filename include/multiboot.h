@@ -36,6 +36,7 @@ Modifications:
 #define _MULTIBOOT_H_
 
 #include <sys/elf.h>
+#include <stdint.h>
 
 /* multiboot.h - the header for Multiboot */
 /* Copyright (C) 1999, 2001  Free Software Foundation, Inc.
@@ -87,72 +88,72 @@ Modifications:
 /* The Multiboot header. */
 typedef struct multiboot_header
 {
-        unsigned long magic;
-        unsigned long flags;
-        unsigned long checksum;
-        unsigned long header_addr;
-        unsigned long load_addr;
-        unsigned long load_end_addr;
-        unsigned long bss_end_addr;
-        unsigned long entry_addr;
+        uint32_t magic;
+        uint32_t flags;
+        uint32_t checksum;
+        uint32_t header_addr;
+        uint32_t load_addr;
+        uint32_t load_end_addr;
+        uint32_t bss_end_addr;
+        uint32_t entry_addr;
 } multiboot_header_t;
 
 /* The symbol table for a.out. */
 typedef struct aout_symbol_table
 {
-        unsigned long tabsize;
-        unsigned long strsize;
-        unsigned long addr;
-        unsigned long reserved;
+        uint32_t tabsize;
+        uint32_t strsize;
+        uint32_t addr;
+        uint32_t reserved;
 } aout_symbol_table_t;
 
 /* The section header table for ELF. */
 typedef struct elf_section_header_table
 {
-        unsigned long num;
-        unsigned long size;
-        unsigned long addr;
-        unsigned long shndx;
+        uint32_t num;
+        uint32_t size;
+        uint32_t addr;
+        uint32_t shndx;
 } elf_section_header_table_t;
 
 /* The Multiboot information. */
 typedef struct multiboot_info
 {
-        unsigned long flags;
-        unsigned long mem_lower;
-        unsigned long mem_upper;
-        unsigned long boot_device;
-        unsigned long cmdline;
-        unsigned long mods_count;
-        unsigned long mods_addr;
+        uint32_t flags;
+        uint32_t mem_lower;
+        uint32_t mem_upper;
+        uint32_t boot_device;
+        uint32_t cmdline;
+        uint32_t mods_count;
+        uint32_t mods_addr;
         union
         {
                 aout_symbol_table_t aout_sym;
                 elf_section_header_table_t elf_sec;
         } u;
-        unsigned long mmap_length;
-        unsigned long mmap_addr;
+        uint32_t mmap_length;
+        uint32_t mmap_addr;
 } multiboot_info_t;
 
 /* The module structure. */
 typedef struct module
 {
-        unsigned long mod_start;
-        unsigned long mod_end;
-        unsigned long string;
-        unsigned long reserved;
+        uint32_t mod_start;
+        uint32_t mod_end;
+        uint32_t string;
+        uint32_t reserved;
 } module_t;
 
 /* The memory map. Be careful that the offset 0 is base_addr_low
    but no size. */
 typedef struct memory_map
 {
-        unsigned long size;
-        unsigned long base_addr_low;
-        unsigned long base_addr_high;
-        unsigned long length_low;
-        unsigned long length_high;
-        unsigned long type;
+        uint32_t size;
+        uint32_t base_addr_low;
+        uint32_t base_addr_high;
+        uint32_t length_low;
+        uint32_t length_high;
+        uint32_t type;
 } memory_map_t;
 
 #endif /* ! ASM */

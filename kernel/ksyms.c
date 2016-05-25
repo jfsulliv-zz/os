@@ -31,6 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <multiboot.h>
 #include <mm/vma.h>
+#include <mm/paging.h>
 #include <sys/elf.h>
 #include <sys/kprintf.h>
 #include <sys/ksyms.h>
@@ -68,7 +69,7 @@ static int ksyms_cmp(const void *va, const void *vb)
 static void ksyms_swap(void *va, void *vb)
 {
         ksyms_entry_t *a = va, *b = vb;
-        unsigned long addr = a->addr;
+        vaddr_t addr = a->addr;
         const char *name = a->name;
 
         a->addr = b->addr;
@@ -124,7 +125,7 @@ _ksyms_load(multiboot_info_t *mbd)
         sym_size = mb_find_section(mbd, ".symtab")->sh_size;
         strtab_size = mb_find_section(mbd, ".strtab")->sh_size;
 
-        ksyms_end = (Elf_Sym *)((unsigned long)ksyms_start + sym_size);
+        ksyms_end = (Elf_Sym *)((vaddr_t)ksyms_start + sym_size);
         kstrtab_end = kstrtab_start + strtab_size;
 
         return 0;
@@ -136,11 +137,13 @@ ksyms_init(multiboot_info_t *mbd)
         int ret;
 
         if ((ret = _ksyms_load(mbd))) {
+                kprintf(0, "Failed to load ksyms; no symbols available.\n");
                 ksyms_broken = true;
                 goto out;
         }
 
         if ((ret = _ksyms_init()))
+                kprintf(0, "Failed to init ksyms; no symbols available.\n");
                 ksyms_broken = true;
 out:
         ksyms_initialized = true;
@@ -148,7 +151,7 @@ out:
 }
 
 ksyms_entry_t *
-ksyms_find(unsigned long addr)
+ksyms_find(vaddr_t addr)
 {
         if (ksyms_broken)
                 return NULL;
@@ -192,7 +195,7 @@ const char *ksyms_broken_str = "NO_SYMS";
 const char *ksyms_unknown = "????????";
 
 const char *
-ksyms_find_func(unsigned long addr)
+ksyms_find_func(vaddr_t addr)
 {
         if (ksyms_broken)
                 return ksyms_broken_str;
@@ -208,14 +211,14 @@ ksyms_find_func(unsigned long addr)
 char ksyms_report_buf[256];
 
 char *
-ksyms_report_eip(unsigned long addr)
+ksyms_report_eip(vaddr_t addr)
 {
         ksyms_entry_t *ent = ksyms_find(addr);
         if (ent) {
-                slprintf(ksyms_report_buf, 256, "0x%08x (%s+0x%x)",
+                slprintf(ksyms_report_buf, 256, PFMT " (%s+0x%x)",
                          addr, ent->name, addr - ent->addr);
         } else {
-                slprintf(ksyms_report_buf, 256, "0x%08x (%s)",
+                slprintf(ksyms_report_buf, 256, PFMT " (%s)",
                          addr, ksyms_unknown);
         }
         return ksyms_report_buf;

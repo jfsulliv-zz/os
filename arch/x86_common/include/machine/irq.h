@@ -51,13 +51,13 @@ char irq_stack[IRQ_STACK_SIZE];
 static inline void
 disable_interrupts(void)
 {
-        __asm__ __volatile__("cli\n");
+        __asm__ __volatile__("cli\n" : : : "memory");
 }
 
 static inline void
 enable_interrupts(void)
 {
-        __asm__ __volatile__("sti\n");
+        __asm__ __volatile__("sti\n" : : : "memory");
 }
 
 void (*irq_routines[16])(struct regs *r);

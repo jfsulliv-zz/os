@@ -64,7 +64,7 @@ struct tss_entry {
         uint16_t iomap_base;
 } __attribute__((packed));
 
-void tss_setup_gdte(struct gdt_entry *gdte_tss);
+void tss_setup_gdte(struct gdt_entry_ext *gdte_tss);
 void tss_install(void);
 void set_kernel_stack(uint64_t stack);
 

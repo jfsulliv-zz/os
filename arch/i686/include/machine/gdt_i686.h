@@ -29,27 +29,46 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <machine/idt.h>
-#include <machine/irq.h>
-#include <sys/kprintf.h>
-#include <machine/pic.h>
-#include <machine/regs.h>
+#ifndef _GDT_I686_H_
+#define _GDT_I686_H_
 
-void isr_handler(struct regs *r)
+#define GDT_CODE_IND   1
+#define GDT_DATA_IND   2
+
+#define NUM_GDT_ENTRIES 3
+
+struct gdt_entry
 {
-        if (r->int_no < INT_EXCEPTION_LIMIT) {
-                kprintf(0, "%s Exception. System Halted!\n",
-                        exception_messages[r->int_no]);
-                dump_regs_from(r);
-                for (;;);
-        } else {
-                void (*handler)(struct regs *r);
-                int irq = r->int_no - INT_IRQ_BASE;
+        unsigned limit_low:             16;
+        unsigned base_low :             24;
+        unsigned accessed :             1;
+        unsigned read_write:            1;
+        unsigned conforming_expand_down:1;
+        unsigned code:                  1;
+        unsigned always_1:              1;
+        unsigned dpl:                   2;
+        unsigned present:               1;
+        unsigned limit_high:            4;
+        unsigned available:             1;
+        unsigned long_mode:             1;
+        unsigned big:                   1;
+        unsigned gran:                  1;
+        unsigned base_high:             8;
+} __attribute__((packed));
 
-                handler = irq_routines[irq];
-                if (handler) {
-                        handler(r);
-                }
-                pic_send_eoi(irq);
-        }
-}
+/* This is the format of TSS, Call gates, etc. */
+struct gdt_entry_ext
+{
+        struct gdt_entry bottom;
+        uint32_t base_higher;
+        uint32_t always_0;
+
+} __attribute__((packed));
+
+struct gdt_ptr
+{
+        uint16_t limit;
+        uint64_t base;
+} __attribute__((packed));
+
+#endif

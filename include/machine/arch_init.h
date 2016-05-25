@@ -43,4 +43,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 void arch_init(multiboot_info_t *mbd);
 
+void arch_init_irqs(void);
+
 #endif

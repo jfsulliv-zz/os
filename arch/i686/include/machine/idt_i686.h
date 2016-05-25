@@ -36,19 +36,22 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 struct idt_entry
 {
-        unsigned        base_low:2;
-        unsigned        sel:2;
-        unsigned        zero1:1;
-        unsigned        type_attr:1;
-        unsigned        base_mid:2;
-        unsigned        base_high:4;
-        unsigned        zero2:4;
+        uint16_t        base_low;
+        uint16_t        sel;
+        uint8_t         always_0;
+        uint8_t         flags;
+        uint16_t        base_mid;
+        uint32_t        base_high;
+        uint32_t        always_0_2;
 } __attribute__((packed));
 
 struct idt_ptr
 {
-        unsigned short limit;
-        uint64_t       base;
+        uint16_t        limit;
+        uint64_t        base;
 } __attribute__((packed));
+
+void idt_set_gate(unsigned char num, uint64_t base, uint16_t sel,
+                  uint8_t flags);
 
 #endif

@@ -41,9 +41,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define WORD_SIZE 64
 
-#define STACK_SZ 32768
+#define STACK_SZ 65536
 
 #define KERN_OFFS 0x00100000ULL
 #define KERN_BASE 0xffffffff80000000ULL
+#define KERN_TOP  0xffffffffffffffffULL
+#define KERN_SZ   (KERN_TOP - KERN_BASE)
 
 #endif

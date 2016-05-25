@@ -43,21 +43,23 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/stdlib.h>
 #include <sys/string.h>
 #include <util/cmp.h>
+#include <machine/params.h>
 
-#define INT_DIGITS 19 /* Room for a 64 bit base-10 integer */
-
-int itoa(int value, char *sp, bool zero_pad, int min_len, int radix)
+#if WORD_SIZE == 32
+#define INT_DIGITS 10
+int itoa(long value, char *sp, bool zero_pad, int min_len,
+         int radix)
 {
 	char tmp[INT_DIGITS + 2];
 	char *tp = tmp;
 	int i;
-	unsigned v;
+	unsigned long v;
 
 	int sign = (radix == 10 && value < 0);
 	if (sign)
 		v = -value;
 	else
-		v = (unsigned)value;
+		v = (unsigned long)value;
 
 	while (v || tp == tmp)
 	{
@@ -100,6 +102,64 @@ int itoa(int value, char *sp, bool zero_pad, int min_len, int radix)
 	return len;
 }
 
+#else
+#define INT_DIGITS 19 /* Room for a 64 bit base-10 integer */
+int itoa(long long value, char *sp, bool zero_pad, int min_len,
+         int radix)
+{
+	char tmp[INT_DIGITS + 2];
+	char *tp = tmp;
+	int i;
+	unsigned long long v;
+
+	int sign = (radix == 10 && value < 0);
+	if (sign)
+		v = -value;
+	else
+		v = (unsigned long long)value;
+
+	while (v || tp == tmp)
+	{
+		i = v % radix;
+		v /= radix;
+		if (i < 10)
+			*tp++ = i+'0';
+		else
+			*tp++ = i + 'A' - 10;
+	}
+
+        int len = tp - tmp;
+
+        if (sign && !zero_pad) {
+                *sp++ = '-';
+                len++;
+        }
+
+        while ((tp - tmp) < min_len) {
+                *tp++ = (zero_pad ? '0' : ' ');
+                len++;
+        }
+
+	if (sign && zero_pad)
+	{
+		*sp++ = '-';
+		len++;
+	}
+
+	if (len > INT_DIGITS + 1) {
+		return -1;
+	}
+
+	while (tp > tmp)
+		*sp++ = *--tp;
+
+	if (len + 1 < INT_DIGITS) {
+		sp[len] = 0;
+	}
+	return len;
+}
+#endif
+
 int atoi(const char *str)
 {
         int res = 0;
@@ -119,7 +179,7 @@ int vsnprintf(char *str, size_t size, const char *format, va_list args)
 	while (i < size && format[n])
 	{
 		if (format[n] == '%') {
-			int iarg;
+			long long iarg;
 			char *sarg;
                         bool zero_pad = false;
                         int min_len = 0;
