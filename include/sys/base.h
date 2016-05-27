@@ -34,7 +34,24 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stddef.h>
 
-#define container_of(ptr, type, member) \
-        ((type *) ((char *)(ptr) - offsetof(type, member)))
+/* clang pretends to be GCC by defining __GNUC__. */
+#if defined(__GNUC__) && !defined(__clang__)
+
+#define container_of(ptr, type, member) ({                      \
+        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+        (type *)( (char *)__mptr - offsetof(type,member) );})   \
+
+#else
+
+/* Ugh, clang doesn't like 'x = ({...});' syntax. We will need a
+ * somewhat less safe version of container_of here, which invokes UB
+ * (casting a non-struct to a struct and accessing a member) and has no
+ * type checking.
+ * Until clang lets us use the 'x = ({...})' syntax, we have no choice
+ * here. */
+#define container_of(ptr, type, member)                         \
+        ((type *) ((char *)(ptr) - offsetof(type, member)))     \
+
+#endif
 
 #endif
