@@ -130,6 +130,10 @@ check_features:
         jnb .fail
         bt edx, 5 ;PAE enabled?
         jnb .fail
+        mov eax, 0x1
+        cpuid
+        bt edx, 25 ; SSE supported?
+        jnb .fail
         mov eax, 1
         ret
 .fail:
@@ -170,6 +174,16 @@ _start:
         rdmsr
         or eax, (1 << 8)
         wrmsr
+
+        ; Enable SSE
+        mov ecx, cr0
+        and cx, 0xfffb ; Clear CR0.EM (Coprocessor emulation)
+        or  cx, 0x2    ; Set   CR0.MP (Coprocessor monitoring)
+        mov cr0, ecx
+
+        mov ecx, cr4
+        or  cx,  (3<<9) ; Set CR4.OSFXR, CR4.OSXMMEXCPT
+        mov cr4, ecx
 
         ; Enable paging
         mov ecx, cr0
