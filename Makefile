@@ -1,14 +1,17 @@
-
 ifeq ($(CONFIG_ARCH), i686)
         BITS=64
         ARCH=i686
         ARCH_TC=x86_64
+        ARCH_TGT=i686-pc-none-elf
+        MARCH=x86-64
         IMG_FMT=efi
         MC=-mcmodel=large
 else
         BITS=32
         ARCH=i386
         ARCH_TC=i386
+        ARCH_TGT=i386-pc-none-elf
+        MARCH=i386
         IMG_FMT=pc
 endif
 

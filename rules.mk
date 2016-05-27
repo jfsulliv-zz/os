@@ -1,12 +1,14 @@
-CC=$(ARCH)-elf-gcc
+CC=clang
 WARNINGS := -Wall -Wextra
-CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -lgcc -ffreestanding \
-            -fno-builtin $(patsubst %,-I%,$(INC)) $(MC)
+CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
+            -fno-builtin $(patsubst %,-I%,$(INC)) $(MC) \
+            --target=$(ARCH_TGT) -march=$(MARCH) \
+            -fno-asynchronous-unwind-tables -nostdinc++
 
 ASM     = nasm
 AFLAGS  =-felf$(BITS) $(patsubst %,-i%/,$(INC))
 
-LD      =$(ARCH)-elf-ld
+LD=$(ARCH)-elf-ld
 LDFLAGS = -melf_$(ARCH_TC) -nostdlib -T arch/$(ARCH)/build/linker.ld
 
 dir := arch/$(ARCH)
