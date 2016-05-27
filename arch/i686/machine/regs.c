@@ -63,7 +63,6 @@ dump_regs(void)
 void
 get_regs(struct regs *to)
 {
-        /* XXX GCC specific */
         uint64_t eip = (uint64_t)__builtin_return_address(1);
         __asm__ __volatile__(
                 "push $0\n"
@@ -108,10 +107,9 @@ get_regs(struct regs *to)
 void
 backtrace(unsigned int max_frames)
 {
-        uint64_t *ebp;
+        uint64_t *ebp = __builtin_frame_address(0);
         uint64_t eip;
         unsigned int fr;
-        __asm__ __volatile__("mov %%rbp, %0\n" : "=r"(ebp));
         for (fr = 0; fr < max_frames; fr++)
         {
                 if (!ebp)

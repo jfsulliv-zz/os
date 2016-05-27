@@ -55,7 +55,7 @@ dump_regs_from(struct regs *r)
 void
 dump_regs(void)
 {
-        struct regs r;
+        struct regs r = { 0 };
         get_regs(&r);
         dump_regs_from(&r);
 }
@@ -63,7 +63,6 @@ dump_regs(void)
 void
 get_regs(struct regs *to)
 {
-        /* XXX GCC specific */
         uint32_t eip = (uint32_t)__builtin_return_address(1);
         __asm__ __volatile__(
                 "push $0\n"
@@ -92,7 +91,7 @@ get_regs(struct regs *to)
 void
 backtrace(unsigned int max_frames)
 {
-        unsigned int *ebp = &max_frames - 2;
+        unsigned int *ebp = __builtin_frame_address(0);
         unsigned int eip;
         unsigned int fr;
         for (fr = 0; fr < max_frames; fr++)
