@@ -1,3 +1,5 @@
+CONFIG_ARCH ?= i386
+
 ifeq ($(CONFIG_ARCH), i686)
         BITS=64
         ARCH=i686
@@ -6,13 +8,15 @@ ifeq ($(CONFIG_ARCH), i686)
         MARCH=x86-64
         IMG_FMT=efi
         MC=-mcmodel=large
-else
+else ifeq ($(CONFIG_ARCH), i386)
         BITS=32
         ARCH=i386
         ARCH_TC=i386
         ARCH_TGT=i386-pc-none-elf
         MARCH=i386
         IMG_FMT=pc
+else
+$(error Unsupported architecture: $(CONFIG_ARCH))
 endif
 
 # default architecture
@@ -44,11 +48,32 @@ endef
 
 $(foreach p,$(MODULES),$(eval $(call OBJDEF,$(p))))
 
-.PHONY: all test img clean clean_cscope dist todolist cscope
+.PHONY: all analyze test img clean clean_cscope dist todolist cscope
 
 all: $(OUT)-$(VERSION) $(GRUBCFG) 
 	-cp $(OUT)-$(VERSION) $(ISODIR)/boot/$(OUT)
 	grub-mkrescue -o $(ISO) $(ISODIR)
+
+# Static analysis checkers.
+CHECKERS=\
+    -enable-checker alpha.core.CastSize \
+    -enable-checker alpha.core.IdenticalExpr \
+    -enable-checker alpha.core.SizeofPtr \
+    -enable-checker alpha.security.ArrayBoundV2 \
+    -enable-checker alpha.security.MallocOverflow \
+    -enable-checker alpha.security.ReturnPtrRange \
+    -enable-checker alpha.unix.SimpleStream \
+    -enable-checker alpha.unix.cstring.BufferOverlap \
+    -enable-checker alpha.unix.cstring.NotNullTerminated \
+    -enable-checker alpha.unix.cstring.OutOfBounds \
+    -enable-checker security.insecureAPI.strcpy \
+# XXX can clang implement a safer container_of macro? If not, we will
+# get tons of analysis hits with this checker which we cannot do
+# anything about.
+#    -enable-checker alpha.core.CastToStruct \
+
+analyze:
+	scan-build --use-cc=$(CC) -analyze-headers -maxloop 8 $(CHECKERS) $(MAKE)
 
 test: CFLAGS += -DRUN_TESTS
 test: all
