@@ -29,6 +29,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <stdbool.h>
+
 #include <multiboot.h>
 #include <mm/vma.h>
 #include <mm/paging.h>
@@ -50,8 +52,8 @@ static const char *kstrtab_start;
 static const char *kstrtab_end;
 
 static ksyms_entry_t *entry_tab = NULL;
-static unsigned long  entry_num = 0;
-static unsigned long  entry_max = 1024;
+static size_t entry_num = 0;
+static size_t entry_max = 1024;
 
 static bool ksyms_broken      = false;
 static bool ksyms_initialized = false;
@@ -103,7 +105,7 @@ _ksyms_init(void)
                         entry_tab = t;
                 }
                 entry_tab[entry_num].addr = sym->st_value;
-                bug_on (kstrtab_start + sym->st_name > kstrtab_end,
+                bug_on (kstrtab_start + sym->st_name >= kstrtab_end,
                         "ELF symbol table refers outside of string table.");
                 entry_tab[entry_num++].name = kstrtab_start + sym->st_name;
         }
@@ -117,10 +119,13 @@ _ksyms_load(multiboot_info_t *mbd)
 {
         Elf_Word sym_size, strtab_size;
 
-        if ((ksyms_start = mb_load_section(mbd, ".symtab")) == NULL)
+        if ((ksyms_start = mb_load_section(mbd, ".symtab")) == NULL) {
                 return 1;
-        if ((kstrtab_start = mb_load_section(mbd, ".strtab")) == NULL)
+        }
+        if ((kstrtab_start = mb_load_section(mbd, ".strtab")) == NULL) {
                 return 1;
+        }
+
 
         sym_size = mb_find_section(mbd, ".symtab")->sh_size;
         strtab_size = mb_find_section(mbd, ".strtab")->sh_size;
@@ -142,9 +147,10 @@ ksyms_init(multiboot_info_t *mbd)
                 goto out;
         }
 
-        if ((ret = _ksyms_init()))
+        if ((ret = _ksyms_init())) {
                 kprintf(0, "Failed to init ksyms; no symbols available.\n");
                 ksyms_broken = true;
+        }
 out:
         ksyms_initialized = true;
         return ret;
@@ -153,10 +159,12 @@ out:
 ksyms_entry_t *
 ksyms_find(vaddr_t addr)
 {
-        if (ksyms_broken)
+        if (ksyms_broken == true) {
                 return NULL;
-        if (!ksyms_initialized)
+        }
+        if (!ksyms_initialized) {
                 return NULL;
+        }
 
         /* Binary search our table to find the function that corresponds
          * to the address. Note that this will probably not be a perfect
