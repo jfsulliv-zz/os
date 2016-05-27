@@ -48,10 +48,24 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 memlimits_t limits;
 
+/* Provided by the linker. */
+extern char sbss, ebss;
+
+static void
+zero_bss(void)
+{
+        size_t sz = &ebss - &sbss;
+        bzero(&sbss, sz);
+}
+
 int
 main(multiboot_info_t *mbd)
 {
         disable_interrupts();
+
+        /* First of all, explicitly zero the BSS since we have no idea
+         * what state it was left in by the bootloader. */
+        zero_bss();
 
         /* Set up the hardware as needed. */
         arch_init();
