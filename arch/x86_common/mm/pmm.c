@@ -456,8 +456,6 @@ pmm_unmapping_all(pmm_t *p)
 static pgent_t *
 pte_find(pte_t *p, vaddr_t va)
 {
-        if (!p)
-                return NULL;
         return p->ents + PTE_IND(va);
 }
 
@@ -467,9 +465,8 @@ pte_find(pte_t *p, vaddr_t va)
 static pgent_t *
 pmd_find(pmd_t *p, vaddr_t va)
 {
-        if (!p)
-                return NULL;
-        return pte_find((pte_t *)p->ents + PMD_IND(va), va);
+        paddr_t phys = pgent_paddr(p->ents[PTE_IND(va)]);
+        return phys == 0 ? NULL : pte_find((pte_t *)_va(phys), va);
 }
 #endif
 
@@ -479,16 +476,16 @@ pmd_find(pmd_t *p, vaddr_t va)
 static pgent_t *
 pud_find(pud_t *p, vaddr_t va)
 {
-        if (!p)
-                return NULL;
-        return pmd_find((pmd_t *)p->ents + PUD_IND(va), va);
+        paddr_t phys = pgent_paddr(p->ents[PUD_IND(va)]);
+        return phys == 0 ? NULL : pmd_find((pmd_t *)_va(phys), va);
 }
 #endif
 
 static pgent_t *
 pgd_find(pgd_t *p, vaddr_t va)
 {
-        return pud_find((pud_t *)p->ents + PGD_IND(va), va);
+        paddr_t phys = pgent_paddr(p->ents[PGD_IND(va)]);
+        return phys == 0 ? NULL : pud_find((pud_t *)_va(phys), va);
 }
 
 /* Set the protection flags of the VM range to pflags in the given map. */

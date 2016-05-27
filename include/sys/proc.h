@@ -94,7 +94,7 @@ typedef struct process_state {
 } proc_state_t;
 
 #define PROC_STATE_INIT ((proc_state_t)\
-{       .regs = { 0ULL },                  \
+{       .regs = { 0 },                  \
         .sp   = NULL,                   \
         .bp   = NULL,                   \
         .cp   = NULL,                   \
