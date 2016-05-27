@@ -33,7 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/kprintf.h>
 #include <sys/panic.h>
 
-void
+__attribute__((noreturn)) void
 _panic(const char *file, const char *fun, int line, const char *why)
 {
         kprintf(0, "***PANIC***\n");
@@ -42,7 +42,7 @@ _panic(const char *file, const char *fun, int line, const char *why)
         for(;;);
 }
 
-void
+__attribute__((noreturn)) void
 _bug(const char *file, const char *fun, int line, const char *why)
 {
         kprintf(0, "***BUG***\n");

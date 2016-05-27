@@ -356,6 +356,10 @@ compute_slab_wastage(mem_cache_t *cp, size_t min_align)
         unsigned long wastage = 0;
         unsigned long waste_per_obj = 0;
 
+        /* Sanity check some critical cache values. */
+        bug_on(cp->obj_size == 0, "compute_slab_wastage called with "
+                                  "obj_size=0");
+
         /* Size and alignment are easy. */
         if (min_align < cp->obj_size)
                 min_align = cp->obj_size;
@@ -436,7 +440,9 @@ mem_cache_create(const char *name, size_t size, size_t align,
 {
         mem_cache_t *cachep;
 
-        bug_on(flags & ~SLAB_CACHE_GOODFLAGS, "Illegal flags argument.");
+        if (!name || size == 0 || (align > 0 && align < size) ||
+            (flags & ~SLAB_CACHE_GOODFLAGS))
+                return NULL;
 
         /* For big objects, keep the slab data elsewhere */
         if (size >= PAGE_SIZE / 8)
@@ -585,6 +591,9 @@ mem_cache_alloc(mem_cache_t *cp, mflags_t flags)
 {
         slab_buf_t *bp;
 
+        if (!cp || BAD_MFLAGS(flags))
+                return NULL;
+
         /* First, see if we have a partial slab to use. */
         slab_t *sp = list_first_entry_or_null(&cp->slabs_partial,
                                               slab_t, slab_list);
@@ -640,9 +649,13 @@ out:
 void
 mem_cache_free(mem_cache_t *cp, void *obj)
 {
-        slab_buf_t *bp = find_slab_buf(cp, obj);
+        slab_buf_t *bp;
         slab_t *sp;
 
+        if (!cp || !obj)
+                return;
+
+        bp = find_slab_buf(cp, obj);
         if (!bp) {
                 kprintf(PRI_ERR, "mem_cache_free: No record found.\n");
                 return;
@@ -689,7 +702,7 @@ slab_reap(void)
         mem_cache_t *cp;
         mem_cache_t *to_reap = NULL;
         unsigned int i = 0;
-        unsigned int best_num_free;
+        unsigned int best_num_free = 0;
 
         if (vma.num_caches == 0)
                 return;

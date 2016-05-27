@@ -163,9 +163,9 @@ ksyms_find(vaddr_t addr)
          * match of `addr', but instead it will return the greatest
          * address that is less than `addr'. */
         ksyms_entry_t *ent = NULL;
-        unsigned long ind = entry_num / 2;
-        unsigned long bot = 0;
-        unsigned long top = entry_num;
+        size_t ind;
+        size_t bot = 0;
+        size_t top = entry_num;
 
         while (bot < top)
         {

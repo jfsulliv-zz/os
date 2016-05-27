@@ -262,6 +262,13 @@ _new_max_heap(size_t size, int (*cmp)(const void *, const void *),
         return h;
 }
 
+static void
+_max_heap_cleanup(struct max_heap *h)
+{
+        while (max_heap_take(h) != NULL);
+        kfree(h);
+}
+
 static struct max_heap_node *
 _new_node(void *v)
 {
@@ -308,6 +315,6 @@ max_heapify(void *list, size_t num, size_t size,
         }
         return h;
 cleanup:
-        while (max_heap_take(h) != NULL);
+        _max_heap_cleanup(h);
         return NULL;
 }

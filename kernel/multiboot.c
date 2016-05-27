@@ -46,8 +46,6 @@ static char     *shstrtab = NULL;
 int
 mb_load_shdrs(multiboot_info_t *mbd)
 {
-        unsigned long npg;
-
         if (failed)
                 return 1;
         if (shdrs_loaded)
@@ -58,11 +56,6 @@ mb_load_shdrs(multiboot_info_t *mbd)
                 return 1;
         }
 
-        npg = mbd->u.elf_sec.num * mbd->u.elf_sec.size;
-        if (npg < PAGE_SIZE)
-                npg = 1;
-        else
-                npg /= PAGE_SIZE;
         shdrs = (void *)(KERN_BASE +
                         (unsigned long)(mbd->u.elf_sec.addr));
         shdrs_loaded = true;

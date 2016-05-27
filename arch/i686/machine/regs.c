@@ -55,7 +55,7 @@ dump_regs_from(struct regs *r)
 void
 dump_regs(void)
 {
-        struct regs r;
+        struct regs r = { 0 };
         get_regs(&r);
         dump_regs_from(&r);
 }
