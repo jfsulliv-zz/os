@@ -188,6 +188,7 @@ _start:
         ; Enable paging
         mov ecx, cr0
         or  ecx, (1 << 31)
+        or  ecx, (1<<16) ; Set WP bit
         mov cr0, ecx ; Paging is on!
         
         ;;; Jump into the higher half
