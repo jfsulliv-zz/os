@@ -957,8 +957,8 @@ vma_report(void)
 {
         mem_cache_t *cp;
         unsigned long i = 0;
-        char buf[77];
-        banner(buf, sizeof(buf), '=', " %3d caches ", vma.num_caches);
+        char buf[80];
+        banner(buf, sizeof(buf), 77, '=', " %3d caches ", vma.num_caches);
         kprintf(0,"%s\n", buf);
         list_foreach_entry_prev(&vma.cache_list, cp, cache_list)
         {

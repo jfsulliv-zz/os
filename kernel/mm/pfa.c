@@ -40,6 +40,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <asm/bitops.h>
 #include <mm/flags.h>
+#include <mm/memlimits.h>
 #include <mm/reserve.h>
 #include <mm/paging.h>
 #include <mm/pmm.h>
@@ -369,21 +370,24 @@ pfa_report(bool full)
                    "%4s: %5dKiB\n"
                    "%4s: %5dMiB\n"
                    "%4s: %5dMiB\n",
-                B_MiB(allmem_bytes_avail(&mem_limits)),
-                "dma", B_KiB(dma_bytes_avail(&mem_limits)),
-                "low", B_MiB(lowmem_bytes_avail(&mem_limits)),
-                "high", B_MiB(highmem_bytes_avail(&mem_limits)));
+                B_MiB(allmem_bytes_avail(pfa.limits)),
+                "dma", B_KiB(dma_bytes_avail(pfa.limits)),
+                "low", B_MiB(lowmem_bytes_avail(pfa.limits)),
+                "high", B_MiB(highmem_bytes_avail(pfa.limits)));
 
         char buf[80];
-        banner(buf, 4 + 3 + 1 + (WORD_SIZE / 2), '=', " DMA Region ");
+        banner(buf, sizeof(buf), 4 + 3 + 1 + (WORD_SIZE / 2), '=',
+               " DMA Region ");
         kprintf(0, "%s\n", buf);
         kprintf(0, PFMT" - "PFMT"\n", dma_base(pfa.limits),
                         dma_top(pfa.limits));
-        banner(buf, 4 + 3 + 1 + (WORD_SIZE / 2), '=', " Low Region ");
+        banner(buf, sizeof(buf), 4 + 3 + 1 + (WORD_SIZE / 2), '=',
+               " Low Region ");
         kprintf(0, "%s\n", buf);
         kprintf(0, PFMT" - "PFMT"\n", _va(lowmem_base(pfa.limits)),
                         _va(lowmem_top(pfa.limits)));
-        banner(buf, 4 + 3 + 1 + (WORD_SIZE / 2), '=', " High Region ");
+        banner(buf, sizeof(buf), 4 + 3 + 1 + (WORD_SIZE / 2), '=',
+              " High Region ");
         kprintf(0, "%s\n", buf);
         kprintf(0, PFMT" - "PFMT"\n", highmem_base(pfa.limits),
                         highmem_top(pfa.limits));

@@ -35,6 +35,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/elf.h>
 #include <sys/string.h>
 #include <sys/panic.h>
+#include <sys/stdio.h>
 
 static bool failed = false;
 static bool shdrs_loaded = false;
@@ -56,8 +57,7 @@ mb_load_shdrs(multiboot_info_t *mbd)
                 return 1;
         }
 
-        shdrs = (void *)(KERN_BASE +
-                        (unsigned long)(mbd->u.elf_sec.addr));
+        shdrs = (void *)(KERN_BASE + (vaddr_t)(mbd->u.elf_sec.addr));
         shdrs_loaded = true;
         return 0;
 }
@@ -85,7 +85,7 @@ mb_load_shstrtab(multiboot_info_t *mbd)
                 return 1;
         }
 
-        shstrtab = (void *)(KERN_BASE + (unsigned long)shdrs[i].sh_addr);
+        shstrtab = (void *)(KERN_BASE + (vaddr_t)shdrs[i].sh_addr);
         shstrtab_loaded = true;
         return 0;
 }
@@ -114,7 +114,7 @@ mb_load_section(multiboot_info_t *mbd, const char *name)
         Elf_Shdr *shdr = mb_find_section(mbd, name);
         if (!shdr)
                 return NULL;
-        return (void *)(KERN_BASE + (unsigned long)shdr->sh_addr);
+        return (void *)(KERN_BASE + (vaddr_t)shdr->sh_addr);
 }
 
 Elf_Shdr *

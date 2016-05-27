@@ -271,10 +271,13 @@ int slprintf(char *str, size_t size, const char *format, ...)
         return len;
 }
 
-int banner(char *dest, size_t sz, char border, const char *fmt, ...)
+int banner(char *dest, size_t dsz, size_t width, char border,
+           const char *fmt, ...)
 {
         va_list args;
+        size_t sz = MIN(dsz, width+1);
         char tmp[sz];
+
         va_start (args, fmt);
         int len = vslprintf(tmp, sz, fmt, args);
         if (len < 0)

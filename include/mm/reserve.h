@@ -33,7 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define _MM_RESERVE_H_
 
 #include <stdbool.h>
-#include <mm/paging.h>
+#include <mm/memlimits.h>
 
 paddr_t reserve_low_pages(memlimits_t *, size_t num);
 /* Pages given out this way are considered to be invalid once

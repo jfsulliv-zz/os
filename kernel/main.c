@@ -30,10 +30,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <multiboot.h>
-#include <machine/regs.h>
 #include <machine/arch_init.h>
-#include <machine/timer.h>
 #include <machine/irq.h>
+#include <machine/regs.h>
+#include <machine/timer.h>
+#include <machine/tty.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
 #include <mm/pmm.h>
@@ -45,17 +46,29 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/proc.h>
 #include <sys/stdio.h>
 
+memlimits_t limits;
+
 int
 main(multiboot_info_t *mbd)
 {
-        /* Set up the hardware as needed. */
         disable_interrupts();
-        arch_init(mbd);
-        kprintf(0, "Finished arch init\n");
+
+        /* Set up the hardware as needed. */
+        arch_init();
+
+        /* Set up a basic output device. */
+        install_tty();
+        kprintf_set_output_device(tty_get_output_device());
+        kprintf(0,"Hello, world!\n");
+
+        /* Map out the kernel and user physical address space. */
+        detect_memory_limits(&limits, mbd);
+        limits_report(&limits);
+
         /* Set up the pmm subsystem */
-        pmm_init(&mem_limits);
+        pmm_init(&limits);
         /* Set up the page frame allocator */
-        pfa_init(&mem_limits);
+        pfa_init(&limits);
         pfa_report(false);
         DO_TEST(pfa_test);
         /* Set up the VMA */

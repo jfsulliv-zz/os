@@ -29,64 +29,27 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <multiboot.h>
-
 #include <machine/gdt.h>
 #include <machine/idt.h>
 #include <machine/irq.h>
-#include <machine/tty.h>
 #include <machine/timer.h>
 #include <machine/pic.h>
-#include <machine/regs.h>
-#include <mm/init.h>
-#include <mm/paging.h>
-#include <sys/kprintf.h>
+#include <mm/pmm.h>
 #include <sys/panic.h>
-#include <sys/stdio.h>
-
-extern char kernel_end;
-
-memlimits_t mem_limits = { 0, 0, 0, 0, 0};
 
 void
-arch_init(multiboot_info_t *mbd)
+arch_init(void)
 {
-        size_t start_pfn, max_pfn;
-
-        /* Set up memory segmentation. */
+        /* Set up memory segmentation and an IDT. */
         gdt_install();
-
-        /* First up, set up a basic output device. */
-        install_tty();
-        kprintf_set_output_device(tty_get_output_device());
-        kprintf(0,"Hello, world!\n");
-
-        /* Register our IDT and exception handlers. */
         idt_install();
-        kprintf(0,"System tables installed.\n");
-
-        /* Find out our memory limits. */
-        if (!(mbd->flags & 1)) {
-                // TODO manual memory map
-                panic("No memory map available.\n");
-        }
-        start_pfn = PFN_UP(_pa(&kernel_end)); /* Next page after kernel */
-        max_pfn   = PFN_DOWN(1024ULL * mbd->mem_upper);
-        mem_limits.dma_pfn = 1;
-        mem_limits.dma_pfn_end  = (KERN_OFFS / PAGE_SIZE);
-        mem_limits.low_pfn  = start_pfn;
-        bug_on(mem_limits.dma_pfn_end >= mem_limits.low_pfn,
-                        "DMA overflow");
-        mem_limits.high_pfn = start_pfn + ((max_pfn - start_pfn) >> 2);
-        mem_limits.max_pfn  = max_pfn;
-        kprintf(0, "["PFMT " - " PFMT "] kernel\n", KERN_BASE, KERN_BASE +
-                        lowmem_bytes_avail(&mem_limits));
-        kprintf(0, PFMT" bytes\n", lowmem_bytes_avail(&mem_limits));
 }
 
+/* We assume that interrupts are disabled when this is called. */
 void
 arch_init_irqs(void)
 {
+        bug_on(!pmm_initialized(), "IRQs initialized before pmm.");
         irq_install();
         pic_remap(PIC1_OFFSET, PIC2_OFFSET);
         timer_install();

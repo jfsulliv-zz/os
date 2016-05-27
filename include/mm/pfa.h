@@ -35,6 +35,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdbool.h>
 #include <sys/debug.h>
 #include <mm/flags.h>
+#include <mm/memlimits.h>
 #include <mm/paging.h>
 #include <util/list.h>
 

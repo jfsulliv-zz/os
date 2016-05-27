@@ -34,6 +34,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <machine/types.h>
 #include <mm/arch_paging.h>
+#include <mm/memlimits.h>
 #include <mm/paging.h>
 
 typedef struct {

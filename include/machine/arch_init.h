@@ -41,8 +41,12 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 04/16
  */
 
-void arch_init(multiboot_info_t *mbd);
-
+/* Arch-specific setup code. Minimally, the responsibilities should
+ * to be to:
+ *  1) Set up exception handlers
+ *  2) Set up an output device
+ *  3) Perform any pre-paging setup needed for each arch */
+void arch_init(void);
 void arch_init_irqs(void);
 
 #endif
