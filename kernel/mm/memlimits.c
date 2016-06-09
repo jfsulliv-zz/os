@@ -60,6 +60,10 @@ detect_memory_limits(memlimits_t *to, multiboot_info_t *mbd)
                 Elf_Shdr *sh = (void *)(KERN_BASE + mbd->u.elf_sec.addr);
                 for (i = 0; i < mbd->u.elf_sec.num; i++)
                 {
+                        /* Skip over sections that are loaded in
+                         * anyways. */
+                        if (sh[i].sh_addr > KERN_BASE)
+                                continue;
                         vaddr_t sec_end = KERN_BASE + sh[i].sh_addr +
                                 sh[i].sh_size;
                         if (sec_end > last_address)
