@@ -1,5 +1,5 @@
 CC=clang
-WARNINGS := -Wall -Wextra
+WARNINGS := -Wall -Wextra -Werror=implicit-function-declaration
 CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
             -fno-builtin $(patsubst %,-I%,$(INC)) $(MC) \
             --target=$(ARCH_TGT) -march=$(MARCH) \

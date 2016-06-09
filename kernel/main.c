@@ -45,6 +45,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/kprintf.h>
 #include <sys/proc.h>
 #include <sys/stdio.h>
+#include <sys/string.h>
 
 memlimits_t limits;
 
