@@ -71,7 +71,7 @@ void timer_phase(int hz)
         outportb(PIT_DATA_CHAN0, div >> 8);
 }
 
-void timer_handler(struct regs *unused __attribute__((unused)))
+void timer_handler(const struct irq_ctx *unused __attribute__((unused)))
 {
         ++timer_ticks;
 

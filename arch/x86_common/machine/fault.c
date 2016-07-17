@@ -29,6 +29,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <machine/irq.h>
 #include <machine/regs.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
@@ -43,7 +44,7 @@ is_kernel_fault(unsigned long addr)
 }
 
 static void
-handle_fault(struct regs *r, paddr_t fault_addr)
+handle_fault(const struct irq_ctx *r, paddr_t fault_addr)
 {
         kprintf(0, "Page fault at " PFMT "\n", fault_addr);
         if (is_kernel_fault(fault_addr)) {
@@ -54,7 +55,7 @@ handle_fault(struct regs *r, paddr_t fault_addr)
 }
 
 void
-pagefault_handler(struct regs *r)
+pagefault_handler(const struct irq_ctx *r)
 {
         uint32_t fault_addr = get_cr2();
         handle_fault(r, fault_addr);

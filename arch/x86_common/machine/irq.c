@@ -46,7 +46,7 @@ void (*idt_irq_handlers[INT_IRQ_NUM])(void) = {
         irq8,  irq9,  irq10, irq11, irq12, irq13, irq14, irq15
 };
 
-void irq_install_handler(int irq, void (*handler)(struct regs *r))
+void irq_install_handler(int irq, void (*handler)(const struct irq_ctx *r))
 {
         irq_routines[irq] = handler;
 }

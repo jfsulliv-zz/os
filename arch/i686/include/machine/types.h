@@ -36,5 +36,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef uint64_t vaddr_t;
 typedef uint64_t paddr_t;
+typedef uint64_t reg_t;
 
 #endif

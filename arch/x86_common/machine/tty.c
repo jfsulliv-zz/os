@@ -42,12 +42,12 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/system.h>
 #include <machine/tty.h>
 
-unsigned short *textp;
-unsigned short *last_linep;
-unsigned short *scrl_linep;
-unsigned short attrib = 0x0F;
-unsigned short just_bg = 0x00;
-int curs_x, curs_y;
+static unsigned short *textp;
+static unsigned short *last_linep;
+static unsigned short *scrl_linep;
+static unsigned short attrib = 0x0F;
+static unsigned short just_bg = 0x00;
+static int curs_x, curs_y;
 
 output_device_t tty_output = {tty_puts};
 

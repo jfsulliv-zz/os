@@ -32,25 +32,26 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _MACHINE_REGS_H_
 #define _MACHINE_REGS_H_
 
+#include <machine/types.h>
 #include <stdint.h>
 
 /* Register context */
 struct regs
 {
-        uint64_t savfp, savpc; /* Copy of rbp, rip */
-        uint64_t rdi, rsi, rdx, rcx;
-        uint64_t r8,  r9,  rax, rbx;
-        uint64_t rbp, r10, r11, r12;
-        uint64_t r13, r14, r15;
-        uint64_t ds, es, fs, gs;
-        uint64_t int_no, err_code;
-        uint64_t rip, cs, flags, rsp, ss;
+        reg_t savfp, savpc; /* Copy of rbp, rip */
+        reg_t rdi, rsi, rdx, rcx;
+        reg_t r8,  r9,  rax, rbx;
+        reg_t rbp, r10, r11, r12;
+        reg_t r13, r14, r15;
+        reg_t ds, es, fs, gs;
+        reg_t int_no, err_code;
+        reg_t rip, cs, flags, rsp, ss;
 };
 
-static inline unsigned long
+static inline reg_t
 get_cr2(void)
 {
-        unsigned long ret;
+        reg_t ret;
         __asm__ __volatile__(
                 "mov %%cr2, %0"
                 : "=a" (ret));
@@ -58,14 +59,14 @@ get_cr2(void)
 }
 
 static inline void
-set_cr3(uint64_t val)
+set_cr3(reg_t val)
 {
         __asm__ __volatile__(
                 "mov %0, %%cr3"
                 : : "r" (val));
 }
 
-void dump_regs_from(struct regs *r);
+void dump_regs_from(const struct regs *r);
 void dump_regs(void);
 void get_regs(struct regs *to);
 void backtrace(unsigned int max);

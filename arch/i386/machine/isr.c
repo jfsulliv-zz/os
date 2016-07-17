@@ -35,15 +35,16 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/pic.h>
 #include <machine/regs.h>
 
-void isr_handler(struct regs *r)
+void isr_handler(const struct irq_ctx *r)
 {
         if (r->int_no < INT_EXCEPTION_LIMIT) {
                 kprintf(0, "%s Exception. System Halted!\n",
                         exception_messages[r->int_no]);
-                dump_regs_from(r);
+                dump_regs();
+                backtrace(10);
                 for (;;);
         } else {
-                void (*handler)(struct regs *r);
+                void (*handler)(const struct irq_ctx *r);
                 int irq = r->int_no - INT_IRQ_BASE;
 
                 handler = irq_routines[irq];

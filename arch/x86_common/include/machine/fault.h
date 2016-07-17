@@ -32,6 +32,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _MACHINE_FAULT_H_
 #define _MACHINE_FAULT_H_
 
+#include <machine/irq.h>
+
 /* Page fault error bits
  *
  * PF_PROT:  0 means no page found, 1 means protection fault
@@ -46,6 +48,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define PF_RSVD  (1<<3)
 #define PF_INSTR (1<<4)
 
-void pagefault_handler(struct regs *r);
+void pagefault_handler(const struct irq_ctx *r);
 
 #endif

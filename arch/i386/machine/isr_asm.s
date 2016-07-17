@@ -13,8 +13,8 @@ isr_common_stub:
         mov es, ax
         mov fs, ax
         mov gs, ax
-        mov eax, esp
-        push eax                ; Push the stack pointer
+        lea eax, [esp+0x30]
+        push eax                ; Push a pointer to the IRQ context
         call isr_handler
         pop eax                 ; Reload the original DS
         pop gs
@@ -22,15 +22,15 @@ isr_common_stub:
         pop es
         pop ds
         popad
-        add esp, 8
+        add esp, 8              ; Get rid of the IRQ number and errno
         iret                    ; Pop the CS, EIP, EFLAGS, SS, ESP
 
 ; Create a stub for an ISR which does not push its own error code.
 %macro ISR_NOERRORCODE 1
 global isr%1
 isr%1:
-    push byte 0
-    push byte %1
+    push dword 0
+    push dword %1
     jmp isr_common_stub 
 %endmacro
 
@@ -38,7 +38,7 @@ isr%1:
 %macro ISR_ERRORCODE 1
 global isr%1
 isr%1:
-    push byte %1
+    push dword %1
     jmp isr_common_stub
 %endmacro
 
@@ -47,8 +47,8 @@ isr%1:
 %macro IRQ 2
 global irq%1
 irq%1:
-    push byte 0
-    push byte %2
+    push dword 0
+    push dword %2
     jmp isr_common_stub
 %endmacro
 

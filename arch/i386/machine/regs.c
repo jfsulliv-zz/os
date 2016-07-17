@@ -34,7 +34,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/ksyms.h>
 
 void
-dump_regs_from(struct regs *r)
+dump_regs_from(const struct regs *r)
 {
         kprintf(0,"GS=0x%02x FS=0x%02x ES=0x%02x DS=0x%02x CS=0x%02x\n",
                    r->gs, r->fs, r->es, r->ds, r->cs);

@@ -34,6 +34,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <machine/system.h>
 #include <machine/regs.h>
+#include <machine/types.h>
 #include <mm/paging.h>
 
 /*
@@ -45,8 +46,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define IRQ_STACK_ORDER (2)
 #define IRQ_STACK_SIZE  (PAGE_SIZE << IRQ_STACK_ORDER)
-
 char irq_stack[IRQ_STACK_SIZE];
+
+/* Pushed onto the stack by the CPU before entering an ISR. */
+struct irq_ctx {
+        reg_t int_no, err_code;
+        reg_t ip, cs, eflags, sp, ss;
+};
 
 static inline void
 disable_interrupts(void)
@@ -60,9 +66,9 @@ enable_interrupts(void)
         __asm__ __volatile__("sti\n" : : : "memory");
 }
 
-void (*irq_routines[16])(struct regs *r);
+void (*irq_routines[16])(const struct irq_ctx *r);
 
-void irq_install_handler(int irq, void (*handler)(struct regs *r));
+void irq_install_handler(int irq, void (*handler)(const struct irq_ctx *r));
 void irq_uninstall_handler(int irq);
 void irq_install(void);
 

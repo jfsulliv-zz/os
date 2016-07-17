@@ -3,7 +3,8 @@ WARNINGS := -Wall -Wextra -Werror=implicit-function-declaration
 CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
             -fno-builtin $(patsubst %,-I%,$(INC)) $(MC) \
             --target=$(ARCH_TGT) -march=$(MARCH) \
-            -fno-asynchronous-unwind-tables -nostdinc++
+            -fno-asynchronous-unwind-tables -nostdinc++ \
+            -mno-red-zone -mno-mmx -mno-sse -mno-sse2
 
 ASM     = nasm
 AFLAGS  =-felf$(BITS) $(patsubst %,-i%/,$(INC))

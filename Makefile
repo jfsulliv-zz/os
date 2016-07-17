@@ -4,7 +4,7 @@ ifeq ($(CONFIG_ARCH), i686)
         BITS=64
         ARCH=i686
         ARCH_TC=x86_64
-        ARCH_TGT=i686-pc-none-elf
+        ARCH_TGT=x86_64-pc-eabi-elf
         MARCH=x86-64
         IMG_FMT=efi
         MC=-mcmodel=large

@@ -33,20 +33,21 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define _MACHINE_REGS_H_
 
 #include <stdint.h>
+#include <machine/types.h>
 
 /* Register context */
 struct regs
 {
-        unsigned int gs, fs, es, ds;
-        unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-        unsigned int int_no, err_code;
-        unsigned int eip, cs, eflags, useresp, ss;
+        reg_t gs, fs, es, ds;
+        reg_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+        reg_t int_no, err_code;
+        reg_t eip, cs, eflags, useresp, ss;
 };
 
-static inline unsigned int
+static inline reg_t
 get_cr2(void)
 {
-        uint32_t ret;
+        reg_t ret;
         __asm__ __volatile__(
                 "mov %%cr2, %0"
                 : "=a" (ret));
@@ -54,14 +55,14 @@ get_cr2(void)
 }
 
 static inline void
-set_cr3(uint32_t val)
+set_cr3(reg_t val)
 {
         __asm__ __volatile__(
                 "mov %0, %%cr3"
                 : : "r" (val));
 }
 
-void dump_regs_from(struct regs *r);
+void dump_regs_from(const struct regs *r);
 void dump_regs(void);
 void get_regs(struct regs *to);
 void backtrace(unsigned int max);
