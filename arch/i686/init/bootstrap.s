@@ -128,8 +128,6 @@ check_features:
         cpuid
         bt edx, 29 ;64-bit enabled?
         jnb .fail
-        bt edx, 5 ;PAE enabled?
-        jnb .fail
         mov eax, 0x1
         cpuid
         bt edx, 25 ; SSE supported?
