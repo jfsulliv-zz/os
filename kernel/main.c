@@ -89,7 +89,6 @@ main(multiboot_info_t *mbd)
         /* Set up the VMA */
         vma_init();
         DO_TEST(vma_test);
-        vma_report();
         /* Okay, now we can get some symbols. */
         ksyms_init(mbd);
         kprintf(0, "Initialized kernel symbols\n");

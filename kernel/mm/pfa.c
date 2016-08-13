@@ -366,14 +366,14 @@ pfa_report(bool full)
                 }
         }
 
-        kprintf(0, "Memory: %dMiB\n"
-                   "%4s: %5dKiB\n"
-                   "%4s: %5dMiB\n"
-                   "%4s: %5dMiB\n",
+        kprintf(0, "Memory: %5dMiB\n"
+                   "dma:    %5dKiB\n"
+                   "low:    %5dMiB\n"
+                   "high:   %5dMiB\n",
                 B_MiB(allmem_bytes_avail(pfa.limits)),
-                "dma", B_KiB(dma_bytes_avail(pfa.limits)),
-                "low", B_MiB(lowmem_bytes_avail(pfa.limits)),
-                "high", B_MiB(highmem_bytes_avail(pfa.limits)));
+                B_KiB(dma_bytes_avail(pfa.limits)),
+                B_MiB(lowmem_bytes_avail(pfa.limits)),
+                B_MiB(highmem_bytes_avail(pfa.limits)));
 
         char buf[80];
         banner(buf, sizeof(buf), 4 + 3 + 1 + (WORD_SIZE / 2), '=',
