@@ -4,14 +4,10 @@
 ; actually 32-bit code that bootstraps long mode.
 bits 32
 
-extern kernel_sz
 extern kernel_end
-extern KERNEL_VMA
 extern _start_hh
 
-extern GDT64
 extern GDT64.Pointer
-extern GDT64.Code
 
 extern mbhp
 
@@ -23,8 +19,6 @@ extern init_pud
 extern init_pmd
 extern init_pte
 extern init_pte_end
-
-extern STACK_TOP
 
 %define RELOC(x)        ((x)-(LOAD_OFFS))
 %define KRELOC(x)       ((x)-(KERN_BASE))
