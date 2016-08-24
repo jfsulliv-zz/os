@@ -264,7 +264,8 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
                 /* Trim if needed. */
                 while (i > order)
                 {
-                        i--; page_t *buddy = (page_t *)(page + (1UL << i));
+                        i--;
+                        page_t *buddy = (page_t *)(page + (1UL << i));
                         buddy->order = i;
                         if (page->vaddr) {
                                 buddy->vaddr = _va(phys_addr(pfa.pages,
