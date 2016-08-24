@@ -968,7 +968,7 @@ vma_report(void)
                         cp->name, list_size(&cp->slabs_empty),
                         list_size(&cp->slabs_partial),
                         list_size(&cp->slabs_full),
-                        B_KiB(cache_usage(cp)),
+                        KB * cache_usage(cp),
                         cache_num_records(cp));
         }
 }

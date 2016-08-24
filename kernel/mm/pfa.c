@@ -370,10 +370,10 @@ pfa_report(bool full)
                    "dma:    %5dKiB\n"
                    "low:    %5dMiB\n"
                    "high:   %5dMiB\n",
-                B_MiB(allmem_bytes_avail(pfa.limits)),
-                B_KiB(dma_bytes_avail(pfa.limits)),
-                B_MiB(lowmem_bytes_avail(pfa.limits)),
-                B_MiB(highmem_bytes_avail(pfa.limits)));
+                MB * allmem_bytes_avail(pfa.limits),
+                KB * dma_bytes_avail(pfa.limits),
+                MB * lowmem_bytes_avail(pfa.limits),
+                MB * highmem_bytes_avail(pfa.limits));
 
         char buf[80];
         banner(buf, sizeof(buf), 4 + 3 + 1 + (WORD_SIZE / 2), '=',
