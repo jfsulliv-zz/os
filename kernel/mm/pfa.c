@@ -67,21 +67,21 @@ order_of(unsigned long num_pages)
 static void
 mark_avail(page_t *pg)
 {
-        unsigned long ind = PFA_MAP_INDEX(phys_addr(pfa.pages, pg));
+        unsigned long ind = PFA_MAP_INDEX(page_to_phys(pg));
         _clr_bit(pfa.tag_bits, ind);
 }
 
 static void
 mark_allocated(page_t *pg)
 {
-        unsigned long ind = PFA_MAP_INDEX(phys_addr(pfa.pages, pg));
+        unsigned long ind = PFA_MAP_INDEX(page_to_phys(pg));
         _set_bit(pfa.tag_bits, ind);
 }
 
 static bool
 is_avail(page_t *pg)
 {
-        unsigned long ind = PFA_MAP_INDEX(phys_addr(pfa.pages, pg));
+        unsigned long ind = PFA_MAP_INDEX(page_to_phys(pg));
         return (bool)(!_tst_bit(pfa.tag_bits, ind));
 }
 
@@ -159,8 +159,7 @@ pfa_init(memlimits_t *limits)
 
                 page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
-                pg->vaddr = _va(ind * PAGE_SIZE);
-                bug_on(_pa(pg->vaddr) < dma_base(limits), "oops");
+                pg->vaddr = 0;
                 list_add(&pfa.dma_zones[ord].list, &pg->list);
 
                 ind += next_block_size;
@@ -184,8 +183,7 @@ pfa_init(memlimits_t *limits)
 
                 page_t *pg = &pfa.pages[ind];
                 pg->order = ord;
-                pg->vaddr = _va(ind * PAGE_SIZE);
-                bug_on(_pa(pg->vaddr) < lowmem_base(limits), "oops");
+                pg->vaddr = 0;
                 list_add(&pfa.low_zones[ord].list, &pg->list);
 
                 ind += next_block_size;
@@ -267,23 +265,11 @@ pfa_alloc_pages(mflags_t flags, unsigned int order)
                         i--;
                         page_t *buddy = (page_t *)(page + (1UL << i));
                         buddy->order = i;
-                        if (page->vaddr) {
-                                buddy->vaddr = _va(phys_addr(pfa.pages,
-                                                   buddy));
-                        }
                         mark_avail(buddy);
                         list_add(&zones[i].list, &buddy->list);
                 }
-                page->order = i;
+                page->order = order;
 
-                /* Map the pages into the tab. */
-                if (page->vaddr) {
-                        bug_on(pmm_map_range(&init_pmm, page->vaddr,
-                                            (1 << page->order),
-                                            phys_addr(pfa.pages, page),
-                                            flags, PFLAGS_RW),
-                               "Page mapping failed");
-                }
                 return page;
         }
 
@@ -307,9 +293,10 @@ void
 pfa_free_pages(page_t *p, unsigned int order)
 {
         bug_on(!pfa.ready, "PFA used before initialization.");
-        bug_on(!p, "NULL parameter");
         bug_on(order >= PFA_MAX_PAGE_ORDER, "Page zone too big");
         bug_on(is_avail(p), "Page not allocated before freeing");
+
+        if (!p) return;
 
         /* Try to coalesce. */
         while (order < PFA_MAX_PAGE_ORDER)
@@ -321,10 +308,6 @@ pfa_free_pages(page_t *p, unsigned int order)
                 if (buddy->order != order)
                         break;
 
-                if (p->vaddr) {
-                        buddy->vaddr = _va(phys_addr(pfa.pages, buddy));
-                }
-
                 list_del(&buddy->list);
                 if (buddy < p)
                         p = buddy;
@@ -334,18 +317,12 @@ pfa_free_pages(page_t *p, unsigned int order)
 
         p->order = order;
         mark_avail(p);
-        if (is_dma(pfa.limits, phys_addr(pfa.pages, p)))
+        if (is_dma(pfa.limits, page_to_phys(p)))
                 list_add(&pfa.dma_zones[order].list, &p->list);
-        else if (is_lowmem(pfa.limits, phys_addr(pfa.pages, p)))
+        else if (is_lowmem(pfa.limits, page_to_phys(p)))
                 list_add(&pfa.low_zones[order].list, &p->list);
         else
                 list_add(&pfa.high_zones[order].list, &p->list);
-
-        /* Unmap the pages. */
-        if (p->vaddr) {
-                vaddr_t eva = p->vaddr + ((1 << p->order) / PAGE_SIZE);
-                pmm_unmap_range(&init_pmm, p->vaddr, eva);
-        }
 }
 
 void
@@ -371,10 +348,10 @@ pfa_report(bool full)
                    "dma:    %5dKiB\n"
                    "low:    %5dMiB\n"
                    "high:   %5dMiB\n",
-                MB * allmem_bytes_avail(pfa.limits),
-                KB * dma_bytes_avail(pfa.limits),
-                MB * lowmem_bytes_avail(pfa.limits),
-                MB * highmem_bytes_avail(pfa.limits));
+                allmem_bytes_avail(pfa.limits) / MB,
+                dma_bytes_avail(pfa.limits) / KB,
+                lowmem_bytes_avail(pfa.limits) / MB,
+                highmem_bytes_avail(pfa.limits) / MB);
 
         char buf[80];
         banner(buf, sizeof(buf), 4 + 3 + 1 + (WORD_SIZE / 2), '=',
@@ -406,28 +383,17 @@ pfa_test(void)
         /* First, ensure that each type of alloc stays in its region. */
         page_t *p;
         p = pfa_alloc(M_DMA);
-        bug_on(!is_dma(pfa.limits, phys_addr(pfa.pages, p)),
+        bug_on(!is_dma(pfa.limits, page_to_phys(p)),
                         "DMA alloc out of range");
         pfa_free(p);
         p = pfa_alloc(M_KERNEL);
-        bug_on(!is_lowmem(pfa.limits, phys_addr(pfa.pages, p)),
+        bug_on(!is_lowmem(pfa.limits, page_to_phys(p)),
                         "Low alloc out of range");
         pfa_free(p);
         p = pfa_alloc(M_HIGH);
-        bug_on(!is_highmem(pfa.limits, phys_addr(pfa.pages, p)),
+        bug_on(!is_highmem(pfa.limits, page_to_phys(p)),
                         "High alloc out of range");
         pfa_free(p);
-
-        /* Now ensure that we get valid virtual addresses from
-         * allocations. */
-        char *foo = alloc_page(M_KERNEL);
-        bug_on(!foo, "alloc_page returned NULL");
-        bug_on(!is_lowmem(pfa.limits, _pa(foo)), "Out of bounds returned");
-        foo[0] = 'h';
-        foo[1] = 'i';
-        foo[2] = '!';
-        foo[3] = '\0';
-        free_page(foo);
 
         kprintf(0, "pfa_test passed\n");
 }

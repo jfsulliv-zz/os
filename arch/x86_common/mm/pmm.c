@@ -53,6 +53,9 @@ pmm_t init_pmm;
 static mem_cache_t *pmm_cache;
 static bool pmm_late_ready = false;
 
+/* A memory cache for pages, used when we copy a table set. */
+static mem_cache_t *pmm_page_cache;
+
 static void
 pmm_ctor(void *p, __attribute__((unused)) size_t sz)
 {
@@ -65,14 +68,14 @@ pmm_ctor(void *p, __attribute__((unused)) size_t sz)
         }
         pmm->refct = 1;
         pmm->pgdir = (void *)pdir_page->vaddr;
-        pmm->pgdir_paddr = phys_addr(pfa_base(), pdir_page);
+        pmm->pgdir_paddr = page_to_phys(pdir_page);
 }
 
 static void
 pmm_dtor(void *p, __attribute__((unused)) size_t sz)
 {
         pmm_t *pmm = (pmm_t *)p;
-        free_page((void *)pmm->pgdir);
+        pfa_free(phys_to_page(pmm->pgdir_paddr));
 }
 
 static void
@@ -139,15 +142,21 @@ pmm_init(memlimits_t *lim)
                            + (PMD_SIZE * num_pmds)
                            + (PUD_SIZE * num_puds));
 
+        kprintf(0, "Reserving some pages\n");
+
         /* Reserve enough memory to hold all of our page tables. Note
          * that we have *not* mapped them yet and we will definitely
          * page fault if we try to access them. */
         tables_region = reserve_low_pages(lim, PFN_UP(tables_region_sz));
 
+        kprintf(0, "Got some table space\n");
+
         /* Map all of this region in so we can access it. */
         pmm_map_range(&init_pmm, _va(tables_region),
                       PFN_UP(tables_region_sz), tables_region,
                       M_ZERO | M_KERNEL, PFLAGS_RW);
+
+        kprintf(0, "Mapped it in\n");
 
         /* Now we set up this region to be properly mapped with respect
          * to itself. */
@@ -184,6 +193,9 @@ pmm_init_late(void)
                                      sizeof(pmm_t), 0,
                                      pmm_ctor, pmm_dtor);
         bug_on(!pmm_cache, "Failed to allocate PMM cache");
+        pmm_page_cache = mem_cache_create("pmm_page_cache", PAGE_SIZE,
+                                           PAGE_SIZE, 0, NULL, NULL);
+        bug_on(!pmm_page_cache, "Failed to allocate PMM table cache");
         pmm_late_ready = true;
 }
 
@@ -193,6 +205,19 @@ pmm_create(void)
 {
         bug_on(!pmm_late_ready, "PMM late init not done.");
         return mem_cache_alloc(pmm_cache, M_KERNEL);
+}
+
+/* Allocate a page that is mapped in and ready to go. */
+static void *
+alloc_page(void)
+{
+        return mem_cache_alloc(pmm_page_cache, M_KERNEL | M_ZERO);
+}
+
+void
+free_page(void *addr)
+{
+        mem_cache_free(pmm_page_cache, addr);
 }
 
 static int
@@ -222,7 +247,7 @@ copy_pmd(pmd_t *dst, pmd_t *src)
                 pte_t *dpte, *spte;
                 if (!pgent_paddr(src->ents[i]))
                         continue;
-                v = alloc_page(M_KERNEL);
+                v = alloc_page();
                 if (!v)
                         goto free_tables;
                 dpte = (pte_t *)_va(pgent_paddr(dst->ents[i]));
@@ -254,7 +279,7 @@ copy_pud(pud_t *dst, pud_t *src)
                 pmd_t *dpmd, *spmd;
                 if (!pgent_paddr(src->ents[i]))
                         continue;
-                v = alloc_page(M_KERNEL);
+                v = alloc_page();
                 if (!v)
                         goto free_tables;
                 dpmd = (pmd_t *)_va(pgent_paddr(dst->ents[i]));
@@ -284,7 +309,7 @@ copy_pgd(pgd_t *dst, pgd_t *src)
                 pud_t *dpud, *spud;
                 if (!pgent_paddr(src->ents[i]))
                         continue;
-                v = alloc_page(M_KERNEL);
+                v = alloc_page();
                 if (!v)
                         goto free_tables;
                 dpud = (pud_t *)_va(pgent_paddr(dst->ents[i]));
@@ -340,7 +365,7 @@ map_getpage(pmm_t *pmm)
         bug_on(!pmm_initialized(), "Initial page tables are not big enough.");
         if (pfa_ready()) {
                 page_t *pg = pfa_alloc(M_KERNEL);
-                ret = pg ? phys_addr(pfa_base(), pg) : 0;
+                ret = pg ? page_to_phys(pg) : 0;
         } else {
                 ret = reserve_low_pages(pmm->lim, 1);
         }
@@ -348,19 +373,22 @@ map_getpage(pmm_t *pmm)
 }
 
 static inline int
-pte_map(pte_t *pte, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
+pte_map(pte_t *pte, vaddr_t va, paddr_t pa, mflags_t flags,
+        pflags_t pflags, paddr_t *old_pa)
 {
+        if (old_pa)
+                *old_pa = pte->ents[PTE_IND(va)];
         pte->ents[PTE_IND(va)] = (pa | (paddr_t)pt_flags(flags, pflags));
         return 0;
 }
 
 #if PMD_BITS == 0
-#define pmd_map(pmm, pmd, va, pa, flags, pflags) \
-        pte_map((pte_t *)(pmd), va, pa, flags, pflags)
+#define pmd_map(pmm, pmd, va, pa, flags, pflags, old_pa) \
+        pte_map((pte_t *)(pmd), va, pa, flags, pflags, old_pa)
 #else
 static inline int
 pmd_map(pmm_t *pmm, pmd_t *pmd, vaddr_t va, paddr_t pa, mflags_t flags,
-        pflags_t pflags)
+        pflags_t pflags, paddr_t *old_pa)
 {
         pte_t *pte;
         paddr_t p = pgent_paddr(pmd->ents[PMD_IND(va)]);
@@ -372,17 +400,17 @@ pmd_map(pmm_t *pmm, pmd_t *pmd, vaddr_t va, paddr_t pa, mflags_t flags,
                 pte = (pte_t *)_va(p);
                 pmd->ents[PMD_IND(va)] = (p | KPAGE_TAB);
         }
-        return pte_map(pte, va, pa, flags, pflags);
+        return pte_map(pte, va, pa, flags, pflags, old_pa);
 }
 #endif
 
 #if PUD_BITS == 0
-#define pud_map(pmm, pud, va, pa, flags, pflags) \
-        pmd_map(pmm, (pmd_t *)(pud), va, pa, flags, pflags)
+#define pud_map(pmm, pud, va, pa, flags, pflags, old_pa) \
+        pmd_map(pmm, (pmd_t *)(pud), va, pa, flags, pflags, old_pa)
 #else
 static inline int
 pud_map(pmm_t *pmm, pud_t *pud, vaddr_t va, paddr_t pa, mflags_t flags,
-        pflags_t pflags)
+        pflags_t pflags, paddr_t *old_pa)
 {
         pmd_t *pmd;
         paddr_t p = pgent_paddr(pud->ents[PUD_IND(va)]);
@@ -394,13 +422,13 @@ pud_map(pmm_t *pmm, pud_t *pud, vaddr_t va, paddr_t pa, mflags_t flags,
                 pmd = (pmd_t *)_va(p);
                 pud->ents[PUD_IND(va)] = (p | KPAGE_TAB);
         }
-        return pmd_map(pmm, pmd, va, pa, flags, pflags);
+        return pmd_map(pmm, pmd, va, pa, flags, pflags, old_pa);
 }
 #endif
 
 static int
 pgd_map(pmm_t *pmm, pgd_t *pgd, vaddr_t va, paddr_t pa, mflags_t flags,
-        pflags_t pflags)
+        pflags_t pflags, paddr_t *old_pa)
 {
         pud_t *pud;
         paddr_t p = pgent_paddr(pgd->ents[PGD_IND(va)]);
@@ -412,7 +440,7 @@ pgd_map(pmm_t *pmm, pgd_t *pgd, vaddr_t va, paddr_t pa, mflags_t flags,
                 pud = (pud_t *)_va(p);
                 pgd->ents[PGD_IND(va)] = (p | KPAGE_TAB);
         }
-        return pud_map(pmm, pud, va, pa, flags, pflags);
+        return pud_map(pmm, pud, va, pa, flags, pflags, old_pa);
 }
 
 /* Create a mapping from the given vaddr region into the physical
@@ -425,22 +453,33 @@ pmm_map(pmm_t *p, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
         if (++depth > PMM_MAX_DEPTH) {
                 panic("Maximum pmm_map depth execeeded");
         }
-        int ret = pgd_map(p, p->pgdir, va, pa, flags, pflags);
+        int ret = pgd_map(p, p->pgdir, va, pa, flags, pflags, NULL);
         if (ret) {
                 --depth;
                 return ret;
         }
         if (flags & M_ZERO)
                 bzero((void *)va, PAGE_SIZE);
+        page_t *page = phys_to_page(pa);
+        if (page) {
+                page->vaddr = va;
+        }
         --depth;
         return 0;
 }
 
 /* Remove the virtual mapping for vaddr. Assumes va is page aligned. */
 void
-pmm_unmap(pmm_t *p, vaddr_t va)
+pmm_unmap(pmm_t *p, vaddr_t va, paddr_t *ret_pa)
 {
-        pgd_map(p, p->pgdir, va, 0, 0, 0);
+        paddr_t old_pa;
+        pgd_map(p, p->pgdir, va, 0, 0, 0, &old_pa);
+        page_t *page = phys_to_page(old_pa);
+        if (page) {
+                page->vaddr = 0;
+        }
+        if (ret_pa)
+                *ret_pa = old_pa;
 }
 
 /* Hint to the implementation that all mappings will be removed shortly

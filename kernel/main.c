@@ -86,12 +86,17 @@ main(multiboot_info_t *mbd)
         pfa_init(&limits);
         pfa_report(false);
         DO_TEST(pfa_test);
+
+        proc_system_early_init();
+
         /* Set up the VMA */
         vma_init();
         DO_TEST(vma_test);
+
         /* Okay, now we can get some symbols. */
         ksyms_init(mbd);
         kprintf(0, "Initialized kernel symbols\n");
+
         /* Set up the process tables and pid 1 */
         proc_system_init();
         kprintf(0, "Initialized process tables, init process\n");

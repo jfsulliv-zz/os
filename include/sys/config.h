@@ -33,5 +33,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define _CONFIG_H_
 
 #define CONF_VMA_SLAB 1
+#define CONF_DEBUG 1
 
 #endif

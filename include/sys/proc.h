@@ -130,38 +130,45 @@ typedef struct process {
         .control = PROC_CONTROL_INIT(p.control), \
 })
 
-extern proc_t init_proc; /* The init process */
-
 /* The process table, indexed by PIDs */
 extern proc_t **proc_table;
 extern pid_t    pid_max;
 
+/* The init process */
+extern proc_t init_proc;
+
+/* Initialize the proc subsystem. */
+void proc_system_init(void);
+/* Early initialization, before we have VMA. */
+void proc_system_early_init(void);
+
+/* Returns the current process who is executing. */
+proc_t *current_process(void);
+
+/* Sets the maximum number of PIDs the system can have. Only supports
+ * increasing the pidmax. Returns 1 on failure (i.e. if out of memory)
+ */
+int set_pidmax(pid_t);
+
 /* A memory cache for handing out proc_t structs */
 extern mem_cache_t *proc_alloc_cache;
 
-int
-set_pidmax(pid_t);
+/* Returns the PCB for the given pid. */
+proc_t *find_process(pid_t);
 
-void
-proc_system_init(void);
-
-proc_t *
-find_process(pid_t);
-
+/* A set of flags for a fork request. */
 typedef struct {
         int             fr_flags;
 } fork_req_t;
 
-proc_t *
-copy_process(proc_t *, fork_req_t *);
+/* Copy the given process with the given fork_req_t flags. */
+proc_t *copy_process(proc_t *, fork_req_t *);
 
-void
-free_process(proc_t *);
+/* Free the resources held by the given process. */
+void free_process(proc_t *);
 
-void
-proc_init(proc_t *);
-
-void
-proc_deinit(proc_t *);
+/* Initializers and deinitializers for PCBs. */
+void proc_init(proc_t *);
+void proc_deinit(proc_t *);
 
 #endif

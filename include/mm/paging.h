@@ -39,23 +39,20 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 04/16
  */
 
-#include <stdint.h>
 #include <stddef.h>
 #include <machine/types.h>
 #include <mm/arch_paging.h>
 #include <mm/page_table.h>
 #include <util/list.h>
 
+/* Metadata associated with a memory page.
+ * Note that the physical address of the page can be derived by the PFA 
+ * system, but is not stored. The virtual address that the page is
+ * mapped to is stored and is updated by the PMM system. */
 typedef struct {
         vaddr_t vaddr;
-        unsigned long order;
-        struct list_head list;
+        unsigned long order; // Used by the PFA internally.
+        struct list_head list; // Used by the PFA internally.
 } page_t;
-
-static inline paddr_t
-phys_addr(page_t *base, page_t *page)
-{
-        return (page - base) * PAGE_SIZE;
-}
 
 #endif /* _MM_PAGING_H_ */

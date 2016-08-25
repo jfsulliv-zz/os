@@ -38,6 +38,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <mm/paging.h>
 #include <mm/pfa.h>
+#include <mm/pmm.h>
 #include <mm/vma.h>
 #include <mm/vma_slab.h>
 #include <sys/bitops_generic.h>
@@ -47,6 +48,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/size.h>
 #include <sys/stdio.h>
 #include <sys/string.h>
+#include <sys/proc.h>
 #include <util/cmp.h>
 #include <util/math.h>
 #include <util/hash.h>
@@ -406,13 +408,13 @@ slab_init_cache(mem_cache_t *cp,
 {
         mem_cache_ctor(cp, 0);
         strlcpy(cp->name, name, CACHE_NAMELEN+1);
-        cp->obj_size            = size;
-        cp->flags               = flags;
-        cp->wastage             = compute_slab_wastage(cp, align);
-        cp->refct               = 0;
-        cp->grown               = 0;
-        cp->obj_ctor            = ctor;
-        cp->obj_dtor            = dtor;
+        cp->obj_size = size;
+        cp->flags    = flags;
+        cp->wastage  = compute_slab_wastage(cp, align);
+        cp->refct    = 0;
+        cp->grown    = 0;
+        cp->obj_ctor = ctor;
+        cp->obj_dtor = dtor;
         list_head_init(&cp->cache_list);
         list_head_init(&cp->slabs_full);
         list_head_init(&cp->slabs_partial);
@@ -420,16 +422,29 @@ slab_init_cache(mem_cache_t *cp,
 }
 
 static void *
-slab_getpages(mem_cache_t *cp, mflags_t flags)
+slab_getpages(size_t order, mflags_t flags)
 {
-        void *addr = alloc_pages(flags, cp->pf_order);
-        return addr;
+        page_t *page = pfa_alloc_pages(flags, order);
+        if (!page)
+                return NULL;
+        paddr_t phys = page_to_phys(page);
+        vaddr_t vaddr = _va(phys);
+        if (pmm_map_range(current_process()->control.pmm, vaddr,
+                          1<<order, phys, flags, PFLAGS_RW)) {
+                pfa_free_pages(page, order);
+                return NULL;
+        }
+        return (void *)vaddr;
 }
 
 static void
-slab_freepages(mem_cache_t *cp, void *p)
+slab_freepages(void *p, size_t order)
 {
-        free_pages(p, cp->pf_order);
+        paddr_t phys;
+        pmm_unmap_range(current_process()->control.pmm, (vaddr_t)p,
+                        1<<order, &phys);
+        page_t *page = phys_to_page(phys);
+        pfa_free_pages(page, order);
 }
 
 mem_cache_t *
@@ -471,7 +486,7 @@ slab_destroy(mem_cache_t *cp, slab_t *sp)
                 p = (char *)p + cp->align;
         }
         /* Give the slab's pages back to the kernel. */
-        slab_freepages(cp, sp->buf);
+        slab_freepages(sp->buf, cp->pf_order);
         /* If we keep book-keeping off-slab, make sure we remove that
          * too. */
         if (cp->flags & SLAB_CACHE_SLABOFF)
@@ -621,12 +636,12 @@ mem_cache_alloc(mem_cache_t *cp, mflags_t flags)
         }
 
         /* Alas, there are no slabs for us. We have to create a new one. */
-        void *buf = slab_getpages(cp, flags);
+        void *buf = slab_getpages(cp->pf_order, flags);
         if (!buf)
                 return NULL;
         sp = mem_cache_allocmgmt(cp, buf, flags);
         if (!sp) {
-                slab_freepages(cp, buf);
+                slab_freepages(buf, cp->pf_order);
                 return NULL;
         }
         ++sp->num;
@@ -783,11 +798,11 @@ kmalloc(unsigned long size, mflags_t flags)
                 ind = 2;
         if (ind-2 >= vma.num_kmalloc_caches) {
                 /* Just go right to the pager. */
-                ret = alloc_pages(flags, pf_ord);
+                ret = slab_getpages(pf_ord, flags);
                 if (!ret)
                         return NULL;
                 if (create_kmalloc_record(flags, ret, pf_ord, ind-2)) {
-                        free_pages(ret, ind);
+                        slab_freepages(ret, pf_ord);
                         return NULL;
                 }
                 vma.kmalloc_big_cache.big_bused += PAGE_SIZE<<pf_ord;
@@ -815,7 +830,7 @@ kfree(void *addr)
                 return;
 
         if (bp->ind >= vma.num_kmalloc_caches) {
-                free_pages(addr, bp->order);
+                (addr, bp->order);
                 bug_on(vma.kmalloc_big_cache.big_bused <
                         (unsigned long)PAGE_SIZE<<bp->order,
                         "Not enough big bytes for freeing.");

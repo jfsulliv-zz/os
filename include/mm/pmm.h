@@ -102,17 +102,22 @@ pmm_map_range(pmm_t *p, vaddr_t va, size_t npg, paddr_t pa, mflags_t flags,
         return 0;
 }
 
-/* Remove the virtual mapping for vaddr. Assumes va is page aligned. */
+/* Remove the virtual mapping for vaddr. Assumes va is page aligned.
+ * If ret_pa is non-null, it is loaded with the original mapping. */
 void
-pmm_unmap(pmm_t *, vaddr_t va);
+pmm_unmap(pmm_t *, vaddr_t va, paddr_t *ret_pa);
 
+/* Remove the virtual mapping in a range.
+ * If ret_pa is non-null, it is loaded with the original mapping of
+ * the first page. */
 static inline void
-pmm_unmap_range(pmm_t *p, vaddr_t va, vaddr_t eva)
+pmm_unmap_range(pmm_t *p, vaddr_t va, size_t npg, paddr_t *ret_pa)
 {
-        while (va < eva)
+        while (npg-- > 0)
         {
-                pmm_unmap(p, va);
+                pmm_unmap(p, va, ret_pa);
                 va += PAGE_SIZE;
+                ret_pa = NULL; // Only return the first frame addr
         }
 }
 /* Hint to the implementation that all mappings will be removed shortly

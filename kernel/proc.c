@@ -42,7 +42,12 @@ pid_t    pid_max = 65535; /* Default value */
 
 mem_cache_t *proc_alloc_cache;
 
-void proc_ctor(void *p, __attribute__((unused)) size_t sz)
+/* TODO once we go SMP-aware this needs to be per-cpu */
+static proc_t *current;
+
+
+void
+proc_ctor(void *p, __attribute__((unused)) size_t sz)
 {
         proc_t *proc = (proc_t *)p;
         if (!p)
@@ -50,7 +55,8 @@ void proc_ctor(void *p, __attribute__((unused)) size_t sz)
         proc_init(proc);
 }
 
-void proc_dtor(void *p, __attribute__((unused)) size_t sz)
+void
+proc_dtor(void *p, __attribute__((unused)) size_t sz)
 {
         proc_t *proc = (proc_t *)p;
         if (!p)
@@ -89,7 +95,7 @@ proc_system_init_initproc(void)
         init_proc.id.pid = 1;
         init_proc.id.ppid = 0;
         init_proc.control.pmm = &init_pmm;
-        proc_table[1] = &init_proc;
+        current = &init_proc;
 }
 
 static void
@@ -102,11 +108,23 @@ proc_system_init_alloc(void)
 }
 
 void
+proc_system_early_init(void)
+{
+        proc_system_init_initproc();
+}
+
+void
 proc_system_init(void)
 {
         proc_system_init_alloc();
         proc_system_init_table();
-        proc_system_init_initproc();
+        proc_table[1] = &init_proc;
+}
+
+proc_t *
+current_process(void)
+{
+        return current;
 }
 
 static proc_t *

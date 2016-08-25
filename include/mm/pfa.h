@@ -41,10 +41,28 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define PFA_MAX_PAGE_ORDER 12
 
+/* A block is a list of free pages of a common order. */
 typedef struct {
         struct list_head list;
 } pfa_block_t;
 
+/* The Page Frame Allocator object which manages physical memory.
+ *
+ * The PFA segments memory into several zones (DMA, low, high):
+ *      High - Userspace pages
+ *      Low  - Kernel pages
+ *      DMA  - Direct Memory Access pages
+ *
+ * Pages can be fetched from the PFA via the pfa_{alloc,free}_pages
+ * routines. A global table of page structs is maintained and mapped
+ * into memory; these page structs contain metadata used for allocation
+ * purposes and for mapping physical page frames to virtual addresses.
+ *
+ * The pages returned by the PFA are *not* mapped into virtual memory
+ * yet; this is the low-level mechanism by which physical pages can be
+ * reserved that does not handle that. For general purpose memory
+ * allocation, use the VMA system.
+ */
 typedef struct {
         memlimits_t  *limits;
         page_t       *pages;
@@ -55,56 +73,47 @@ typedef struct {
         pfa_block_t   high_zones[PFA_MAX_PAGE_ORDER];
 } pfa_t;
 
+/* The system-wide page frame allocator object. */
 extern pfa_t pfa;
 
-#define PFA_MAP_INDEX(paddr)   ((unsigned long)paddr >> PAGE_SHIFT)
-#define PFA_MAP_INDEX_V(vaddr) (PFA_MAP_INDEX(_pa(vaddr)))
+/* Returns the first page in memory. */
+page_t *pfa_base(void);
 
-static inline page_t *
-virt_to_page(void *vaddr)
-{
-        return pfa.pages + PFA_MAP_INDEX_V(vaddr);
-}
-
-static inline page_t *
-phys_to_page(void *paddr)
-{
-        return pfa.pages + PFA_MAP_INDEX(paddr);
-}
-
+/* Initialize the PFA subsystem. */
 void pfa_init(memlimits_t *limits);
+/* Returns true if the PFA system is ready, false otherwise. */
 bool pfa_ready(void);
+/* Dump out a report of the available memory. When `full' is set, give
+ * extra details. */
 void pfa_report(bool full);
 
+__test void pfa_test(void);
+
+#define PFA_MAP_INDEX(paddr)   ((unsigned long)paddr >> PAGE_SHIFT)
+
+/* Translates a physical address to its corresponding page struct. */
+static inline page_t *
+phys_to_page(paddr_t paddr)
+{
+        if (!pfa_base())
+                return NULL;
+        return pfa_base() + PFA_MAP_INDEX(paddr);
+}
+
+/* Translate a page struct to its corresponding physical address. */
+static inline paddr_t
+page_to_phys(page_t *page)
+{
+        return (page - pfa_base()) * PAGE_SIZE;
+}
+
+/* Returns the first page in a range of physical pages of size
+ * (1<<order). The pages are not mapped into virtual memory yet. */
 page_t *pfa_alloc_pages(mflags_t, unsigned int order);
 void    pfa_free_pages (page_t *, unsigned int order);
 
-static inline void *
-alloc_pages(mflags_t flags, unsigned int order)
-{
-        page_t *p = pfa_alloc_pages(flags, order);
-        if (!p)
-                return NULL;
-        return (void *)p->vaddr;
-}
-
-static inline void
-free_pages(void *p, unsigned int order)
-{
-        if (!p)
-                return;
-        page_t *pg = (&pfa.pages[(_pa(p) >> PAGE_SHIFT)]);
-        pfa_free_pages(pg, order);
-}
-
-page_t *pfa_base(void);
-
+/* Convenience macros for single-page allocations. */
 #define pfa_alloc(flags) pfa_alloc_pages(flags, 0)
 #define pfa_free(page)   pfa_free_pages(page, 0)
-
-#define alloc_page(flags) alloc_pages(flags, 0)
-#define free_page(page)   free_pages(page, 0)
-
-__test void pfa_test(void);
 
 #endif
