@@ -37,7 +37,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/pfa.h>
 #include <mm/vma.h>
 #include <sys/errno.h>
-#include <sys/kprintf.h>
 #include <sys/stdio.h>
 #include <sys/panic.h>
 #include <sys/string.h>
@@ -142,21 +141,15 @@ pmm_init(memlimits_t *lim)
                            + (PMD_SIZE * num_pmds)
                            + (PUD_SIZE * num_puds));
 
-        kprintf(0, "Reserving some pages\n");
-
         /* Reserve enough memory to hold all of our page tables. Note
          * that we have *not* mapped them yet and we will definitely
          * page fault if we try to access them. */
         tables_region = reserve_low_pages(lim, PFN_UP(tables_region_sz));
 
-        kprintf(0, "Got some table space\n");
-
         /* Map all of this region in so we can access it. */
         pmm_map_range(&init_pmm, _va(tables_region),
                       PFN_UP(tables_region_sz), tables_region,
                       M_ZERO | M_KERNEL, PFLAGS_RW);
-
-        kprintf(0, "Mapped it in\n");
 
         /* Now we set up this region to be properly mapped with respect
          * to itself. */
