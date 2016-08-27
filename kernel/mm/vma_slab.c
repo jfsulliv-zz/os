@@ -835,6 +835,7 @@ kfree(void *addr)
                         (unsigned long)PAGE_SIZE<<bp->order,
                         "Not enough big bytes for freeing.");
                 vma.kmalloc_big_cache.big_bused -= PAGE_SIZE<<bp->order;
+                slab_freepages(bp->vaddr, bp->order);
         } else {
                 mem_cache_free(&vma.kmalloc_caches[bp->ind], addr);
         }
@@ -998,16 +999,18 @@ vma_test_kmalloc(void)
         for (j = 0; j < 16; j++) {
                 for (i = 0; i < 100; i++) {
                         p = kmalloc(1 << j, M_KERNEL);
-                        if (p) {
-                                memset(p, 0, 1<<j);
-                                void *p2 = krealloc(p, 1<<j, M_KERNEL);
-                                if (p2) {
-                                        p = p2;
-                                        memset(p, 1, 1<<j);
-                                }
-                                kfree(p);
-                                n++;
+                        if (!p) {
+                                kprintf(0, "Failed to alloc %d pages\n", 1<<j);
+                                bug("kmalloc failed.\n");
                         }
+                        memset(p, 0, 1<<j);
+                        void *p2 = krealloc(p, 1<<j, M_KERNEL);
+                        if (p2) {
+                                p = p2;
+                                memset(p, 1, 1<<j);
+                        }
+                        kfree(p);
+                        n++;
                 }
         }
         kprintf(0, "vma_test_kmalloc passed\n");
