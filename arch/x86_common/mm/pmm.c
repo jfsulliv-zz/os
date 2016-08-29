@@ -229,7 +229,6 @@ copy_pte(pte_t *dst, pte_t *src)
         unsigned long i;
         for (i = 0; i < PTE_NUM; i++)
         {
-                paddr_t p = dst->ents[i];
                 if (!pgent_paddr(src->ents[i]))
                         dst->ents[i] = _PAGE_PROTNONE;
                 else
@@ -540,9 +539,9 @@ pmm_map(pmm_t *p, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
 void
 pmm_unmap(pmm_t *p, vaddr_t va, paddr_t *ret_pa)
 {
-        paddr_t old_pa;
+        paddr_t old_pa = 0;
         pgd_map(p, p->pgdir, va, 0, 0, 0, &old_pa);
-        page_t *page = phys_to_page(old_pa);
+        page_t *page = old_pa ? phys_to_page(old_pa) : NULL;
         if (page) {
                 page->vaddr = 0;
         }
