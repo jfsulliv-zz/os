@@ -238,7 +238,7 @@ copy_pte(pte_t *dst, pte_t *src)
         return 0;
 }
 
-#if PMD_BITS == 0 
+#if PMD_BITS == 0
 #define copy_pmd(pmm, dst, src) copy_pte((pte_t *)dst, (pte_t *)src)
 #else
 static int
@@ -272,7 +272,7 @@ free_tables:
 }
 #endif
 
-#if PUD_BITS == 0 
+#if PUD_BITS == 0
 #define copy_pud(pmm, dst, src) copy_pmd(pmm, (pmd_t *)dst, (pmd_t *)src)
 #else
 static int
