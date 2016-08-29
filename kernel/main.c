@@ -80,26 +80,33 @@ main(multiboot_info_t *mbd)
         detect_memory_limits(&limits, mbd);
         limits_report(&limits);
 
-        /* Set up the pmm subsystem */
+        /* Set up the early PMM subsystem */
         pmm_init(&limits);
+
         /* Set up the page frame allocator */
         pfa_init(&limits);
         pfa_report(false);
         DO_TEST(pfa_test);
 
+        /* This gives us a current process, which the VMA system needs
+         * to use to identify which address space to use. */
         proc_system_early_init();
 
         /* Set up the VMA */
         vma_init();
         DO_TEST(vma_test);
 
+        /* Now we can use the VMA to get the full PMM subsystem going. */
+        pmm_init_late();
+
         /* Okay, now we can get some symbols. */
         ksyms_init(mbd);
         kprintf(0, "Initialized kernel symbols\n");
 
-        /* Set up the process tables and pid 1 */
+        /* Set up the process tables and process allocation */
         proc_system_init();
         kprintf(0, "Initialized process tables, init process\n");
+        DO_TEST(proc_test);
 
         /* Now that we have all of that stuff, we can get ready for
          * IRQs. */

@@ -31,6 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <mm/pmm.h>
 #include <mm/vma.h>
+#include <sys/kprintf.h>
 #include <sys/string.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
@@ -134,8 +135,10 @@ _alloc_process(void)
         p = mem_cache_alloc(proc_alloc_cache, M_KERNEL);
         if (p) {
                 /* Check for errors */
-                if (p->id.pid == 0) /* Out of PIDs */
+                if (p->id.pid == 0) { /* Out of PIDs */
+                        kprintf(0, "Out of PIDs\n");
                         goto free_proc;
+                }
                 else if (p->control.pmm == NULL) /* Out of memory */
                         goto free_proc;
         }
@@ -168,8 +171,10 @@ copy_process(proc_t *par, fork_req_t *req)
                 return NULL;
 
         proc_t *p = _alloc_process();
-        if (!p)
+        if (!p) {
+                kprintf(0, "Failed to allocate process\n");
                 return NULL;
+        }
         if (_make_child(par, p)) {
                 free_process(p);
                 return NULL;
@@ -192,7 +197,7 @@ next_pid(void)
 {
         static pid_t last_pid = 1;
         pid_t ret;
-        for (ret = last_pid+1; ret != last_pid+1; ret++)
+        for (ret = last_pid+1; ret != last_pid; ret++)
         {
                 if (ret > pid_max)
                         ret = 1;
@@ -222,4 +227,21 @@ proc_deinit(proc_t *p)
         if (!p)
                 return;
         proc_table[p->id.pid] = NULL;
+        pmm_destroy(p->control.pmm);
+}
+
+__test void
+proc_test(void)
+{
+        proc_t *p1, *p2;
+        p1 = current_process();
+        bug_on(p1->id.pid != 1, "Current is not pid 1\n");
+        p2 = find_process(1);
+        bug_on(p1 != p2, "find_process misidentified pid 1\n");
+        p2 = copy_process(p1, NULL);
+        bug_on(!p2, "copy_process failed\n");
+        p2->state.sched_state = PROC_STATE_TERMINATED;
+        free_process(p2);
+        kprintf(0, "proc_test passed\n");
+
 }

@@ -42,6 +42,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/regs.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
+#include <sys/debug.h>
 #include <util/list.h>
 
 typedef int32_t  pid_t;
@@ -141,6 +142,7 @@ extern proc_t init_proc;
 void proc_system_init(void);
 /* Early initialization, before we have VMA. */
 void proc_system_early_init(void);
+__test void proc_test(void);
 
 /* Returns the current process who is executing. */
 proc_t *current_process(void);
