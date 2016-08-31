@@ -55,7 +55,7 @@ dump_regs_from(const struct regs *r)
 void
 dump_regs(void)
 {
-        struct regs r = { 0 };
+        struct regs r = {}; // {} shuts clang up about uninitialized var
         get_regs(&r);
         dump_regs_from(&r);
 }
@@ -63,7 +63,7 @@ dump_regs(void)
 void
 get_regs(struct regs *to)
 {
-        uint64_t eip = (uint64_t)__builtin_return_address(1);
+        uint64_t rip = (uint64_t)__builtin_return_address(1);
         __asm__ __volatile__(
                 "push $0\n"
                 "push %%rsp\n"
@@ -91,8 +91,6 @@ get_regs(struct regs *to)
                 "push %%rdx\n"
                 "push %%rsi\n"
                 "push %%rdi\n"
-                "push $0\n"
-                "push $0\n"
                 "mov %1, %%rcx\n"
                 "mov %%rsp, %%rsi\n"
                 "mov %0, %%rdi\n"
@@ -100,8 +98,8 @@ get_regs(struct regs *to)
                 "add %1, %%rsp\n"
                 : "+r" (to)
                 : "r" ((sizeof(struct regs))),
-                  "r" (eip)
-                : "ecx", "esi", "edi");
+                  "r" (rip)
+                : "rcx", "rsi", "rdi");
 }
 
 void
@@ -121,4 +119,11 @@ backtrace(unsigned int max_frames)
                         break;
                 ebp = (uint64_t *)(ebp[0]);
         }
+}
+
+void
+set_stack(struct regs *regs, reg_t stack, size_t stack_size)
+{
+        regs->rsp = stack + stack_size - 16;
+        regs->rbp = 0;
 }

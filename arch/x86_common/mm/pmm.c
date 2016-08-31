@@ -104,7 +104,7 @@ free_pmd(pmm_t *cur_pmm, pmd_t *pmd)
 #endif
 
 #if PUD_BITS == 0
-#define free_pud(cur_pmm pud) free_pmd(cur_pmm, (pmd_t *)pud)
+#define free_pud(cur_pmm, pud) free_pmd(cur_pmm, (pmd_t *)pud)
 #else
 static inline void
 free_pud(pmm_t *cur_pmm, pud_t *pud)
@@ -243,7 +243,7 @@ copy_pte(pte_t *dst, pte_t *src)
 static int
 copy_pmd(pmm_t *cur_pmm, pmd_t *dst, pmd_t *src)
 {
-        unsigned long i;
+        unsigned long i, j;
         for (i = 0; i < PMD_NUM; i++)
         {
                 void *v;
@@ -262,10 +262,11 @@ copy_pmd(pmm_t *cur_pmm, pmd_t *dst, pmd_t *src)
         }
         return 0;
 free_tables:
-        while (i--)
+        for (j = 0; j < i; j++)
         {
-                void *v = (void *)_va(pgent_paddr(dst->ents[i]));
-                free_page(cur_pmm, v);
+                void *v = (void *)_va(pgent_paddr(dst->ents[j]));
+                if (v)
+                        free_page(cur_pmm, v);
         }
         return ENOMEM;
 }
@@ -277,7 +278,7 @@ free_tables:
 static int
 copy_pud(pmm_t *cur_pmm, pud_t *dst, pud_t *src)
 {
-        unsigned long i;
+        unsigned long i, j;
         for (i = 0; i < PUD_NUM; i++)
         {
                 void *v;
@@ -297,10 +298,11 @@ copy_pud(pmm_t *cur_pmm, pud_t *dst, pud_t *src)
         }
         return 0;
 free_tables:
-        while (i--)
+        for (j = 0; j < i; j++)
         {
-                void *v = (void *)_va(pgent_paddr(dst->ents[i]));
-                free_page(cur_pmm, v);
+                void *v = (void *)_va(pgent_paddr(dst->ents[j]));
+                if (v)
+                        free_page(cur_pmm, v);
         }
         return ENOMEM;
 }
@@ -309,7 +311,7 @@ free_tables:
 static int
 copy_pgd(pmm_t *cur_pmm, pgd_t *dst, pgd_t *src)
 {
-        unsigned long i;
+        unsigned long i, j;
         for (i = 0; i < PGD_NUM; i++)
         {
                 void *v;
@@ -329,10 +331,11 @@ copy_pgd(pmm_t *cur_pmm, pgd_t *dst, pgd_t *src)
         }
         return 0;
 free_tables:
-        while (i--)
+        for (j = 0; j < i; j++)
         {
-                void *v = (void *)_va(pgent_paddr(dst->ents[i]));
-                free_page(cur_pmm, v);
+                void *v = (void *)_va(pgent_paddr(dst->ents[j]));
+                if (v)
+                        free_page(cur_pmm, v);
         }
         return ENOMEM;
 }
@@ -651,7 +654,6 @@ pmm_activate(pmm_t *p)
 void
 pmm_deactivate(pmm_t *p)
 {
-        panic("TODO");
 }
 
 static bool

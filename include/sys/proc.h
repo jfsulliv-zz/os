@@ -87,24 +87,23 @@ typedef enum {
 } sched_state_t;
 
 typedef struct process_state {
-        struct regs regs;               /* CPU's registers */
-        void *sp;                       /* stack pointer */
-        void *bp;                       /* frame pointer */
-        void *cp;                       /* code pointer */
+        struct regs uregs;              /* Saved user-mode registers */
+        struct regs regs;               /* Saved kernel-mode registers */
+        void *kstack;                   /* The kernel stack base */
         sched_state_t sched_state;      /* process execution state */
 } proc_state_t;
 
 #define PROC_STATE_INIT ((proc_state_t)\
 {       .regs = { 0 },                  \
-        .sp   = NULL,                   \
-        .bp   = NULL,                   \
-        .cp   = NULL,                   \
         .sched_state = PROC_STATE_NEW,  \
 })
+
+struct process;
 
 typedef struct process_control {
         struct list_head children;      /* Child process list */
         struct list_head pr_list;       /* Entry in the above list */
+        struct process *next;           /* Next process to schedule. */
         pmm_t *pmm;                     /* Physical memory mappings */
 } proc_control_t;
 
@@ -168,6 +167,11 @@ proc_t *copy_process(proc_t *, fork_req_t *);
 
 /* Free the resources held by the given process. */
 void free_process(proc_t *);
+
+/* Switch to the next process to be scheduled. If there is no next
+ * process, current_process() stays live.
+ * We save the register state into the PCB of current() at this point. */
+void switch_to_next_process(struct regs *regs);
 
 /* Initializers and deinitializers for PCBs. */
 void proc_init(proc_t *);

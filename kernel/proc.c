@@ -46,14 +46,13 @@ mem_cache_t *proc_alloc_cache;
 /* TODO once we go SMP-aware this needs to be per-cpu */
 static proc_t *current;
 
-
 void
 proc_ctor(void *p, __attribute__((unused)) size_t sz)
 {
         proc_t *proc = (proc_t *)p;
         if (!p)
                 return;
-        proc_init(proc);
+        bzero(proc, sizeof(proc_t));
 }
 
 void
@@ -81,6 +80,45 @@ set_pidmax(pid_t p)
         return 0;
 }
 
+proc_t *
+current_process(void)
+{
+        return current;
+}
+
+static void
+set_current(proc_t *new)
+{
+        bug_on(!new, "Assigning NULL current");
+        current = new;
+}
+
+static void
+assign_pid(proc_t *proc, pid_t pid)
+{
+        bug_on(pid < 0 || pid >= pid_max, "Assigning invalid PID");
+        proc_table[pid] = proc;
+        if (proc)
+                proc->id.pid = pid;
+}
+
+static pid_t
+next_pid(void)
+{
+        static pid_t last_pid = 1;
+        pid_t ret;
+        for (ret = last_pid+1; ret != last_pid; ret++)
+        {
+                if (ret > pid_max)
+                        ret = 1;
+                if (proc_table[ret] == NULL) {
+                        last_pid = ret;
+                        return ret;
+                }
+        }
+        return 0; /* Out of PIDs */
+}
+
 static void
 proc_system_init_table(void)
 {
@@ -96,7 +134,7 @@ proc_system_init_initproc(void)
         init_proc.id.pid = 1;
         init_proc.id.ppid = 0;
         init_proc.control.pmm = &init_pmm;
-        current = &init_proc;
+        set_current(&init_proc);
 }
 
 static void
@@ -119,13 +157,7 @@ proc_system_init(void)
 {
         proc_system_init_alloc();
         proc_system_init_table();
-        proc_table[1] = &init_proc;
-}
-
-proc_t *
-current_process(void)
-{
-        return current;
+        assign_pid(&init_proc, 1);
 }
 
 static proc_t *
@@ -134,6 +166,7 @@ _alloc_process(void)
         proc_t *p;
         p = mem_cache_alloc(proc_alloc_cache, M_KERNEL);
         if (p) {
+                proc_init(p);
                 /* Check for errors */
                 if (p->id.pid == 0) { /* Out of PIDs */
                         kprintf(0, "Out of PIDs\n");
@@ -161,6 +194,7 @@ _make_child(proc_t *par, proc_t *p)
 {
         p->id.ppid = par->id.pid;
         list_add(&par->control.children, &p->control.pr_list);
+        memcpy(&p->state.regs, &par->state.regs, sizeof(struct regs));
         return pmm_copy(p->control.pmm, par->control.pmm);
 }
 
@@ -192,21 +226,28 @@ free_process(proc_t *p)
         mem_cache_free(proc_alloc_cache, p);
 }
 
-static pid_t
-next_pid(void)
+void
+switch_process(proc_t *p, proc_t *nextp)
 {
-        static pid_t last_pid = 1;
-        pid_t ret;
-        for (ret = last_pid+1; ret != last_pid; ret++)
-        {
-                if (ret > pid_max)
-                        ret = 1;
-                if (proc_table[ret] == NULL) {
-                        last_pid = ret;
-                        return ret;
-                }
-        }
-        return 0; /* Out of PIDs */
+        bug_on(!p || !nextp, "Switching to invalid PCB");
+        bug_on(p != current_process(),
+               "Switching off of non-executing process");
+
+        set_current(nextp);
+        kprintf(0, "Switched current\n");
+
+        /* Swap out the address spaces. */
+        pmm_deactivate(p->control.pmm);
+        pmm_activate(nextp->control.pmm);
+        kprintf(0, "Running a new PMM\n");
+
+        /* Perform an arch-dependent context switch. */
+        context_switch(&p->state.regs,
+                       (const struct regs *)&nextp->state.regs);
+        kprintf(0, "Switched contexts!\n");
+
+        /* Cool, we're a new process! The old one is 'paused' inside
+         * context_switch(), where we saved its state. */
 }
 
 void
@@ -215,10 +256,12 @@ proc_init(proc_t *p)
         if (!p)
                 return;
         p->id      = PROC_ID_INIT;
-        p->id.pid  = next_pid();
+        assign_pid(p, next_pid());
         p->state   = PROC_STATE_INIT;
         p->control = PROC_CONTROL_INIT(p->control);
         p->control.pmm = pmm_create();
+        p->state.kstack = kmalloc(PAGE_SIZE * 4, M_KERNEL | M_ZERO);
+        set_stack(&p->state.regs, (reg_t)p->state.kstack, PAGE_SIZE * 4);
 }
 
 void
@@ -226,8 +269,9 @@ proc_deinit(proc_t *p)
 {
         if (!p)
                 return;
-        proc_table[p->id.pid] = NULL;
+        assign_pid(NULL, p->id.pid);
         pmm_destroy(p->control.pmm);
+        kfree(p->state.kstack);
 }
 
 __test void

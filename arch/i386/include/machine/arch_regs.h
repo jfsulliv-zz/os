@@ -29,8 +29,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_REGS_H_
-#define _MACHINE_REGS_H_
+#ifndef _MACHINE_ARCH_REGS_H_
+#define _MACHINE_ARCH_REGS_H_
 
 #include <stdint.h>
 #include <machine/types.h>
@@ -41,7 +41,7 @@ struct regs
         reg_t gs, fs, es, ds;
         reg_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
         reg_t int_no, err_code;
-        reg_t eip, cs, eflags, useresp, ss;
+        reg_t eip, cs, eflags, ss;
 };
 
 static inline reg_t
@@ -61,10 +61,5 @@ set_cr3(reg_t val)
                 "mov %0, %%cr3"
                 : : "r" (val));
 }
-
-void dump_regs_from(const struct regs *r);
-void dump_regs(void);
-void get_regs(struct regs *to);
-void backtrace(unsigned int max);
 
 #endif

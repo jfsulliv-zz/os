@@ -36,8 +36,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 void
 dump_regs_from(const struct regs *r)
 {
-        kprintf(0,"GS=0x%02x FS=0x%02x ES=0x%02x DS=0x%02x CS=0x%02x\n",
-                   r->gs, r->fs, r->es, r->ds, r->cs);
+        kprintf(0,"GS=0x%02x FS=0x%02x ES=0x%02x DS=0x%02x CS=0x%02x "
+                  "SS=0x%02x\n",
+                   r->gs, r->fs, r->es, r->ds, r->cs, r->ss);
         kprintf(0,"EDI = 0x%08x    ESI = 0x%08x\n",
                    r->edi, r->esi);
         kprintf(0,"EBP = 0x%08x    ESP = 0x%08x\n",
@@ -55,7 +56,7 @@ dump_regs_from(const struct regs *r)
 void
 dump_regs(void)
 {
-        struct regs r = { 0 };
+        struct regs r;
         get_regs(&r);
         dump_regs_from(&r);
 }
@@ -65,8 +66,7 @@ get_regs(struct regs *to)
 {
         uint32_t eip = (uint32_t)__builtin_return_address(1);
         __asm__ __volatile__(
-                "push $0\n"
-                "push $0\n"
+                "push %%ss\n"
                 "pushf\n"
                 "push %%cs\n"
                 "push %2\n"
@@ -105,4 +105,11 @@ backtrace(unsigned int max_frames)
                         break;
                 ebp = (unsigned int *)(ebp[0]);
         }
+}
+
+void
+set_stack(struct regs *regs, reg_t stack, size_t stack_size)
+{
+        regs->esp = stack + stack_size - 4;
+        regs->ebp = 0;
 }
