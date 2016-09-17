@@ -1,0 +1,25 @@
+Adding System calls
+===================
+
+1. Add system call description to kernel/syscall/syscalls.master
+
+        The format is outlined in the syscalls.master file.
+
+2. Add system call method prototype to include/sys/syscall_constants.h
+
+        The expected name is sys_{name} with return type 'int'. For
+        calls that do not return (e.g. exit), prepend the prototype
+        with __attribute__((noreturn)).
+
+3. Implement the system call in a .c fle in kernel/syscall/
+
+        The preferred name for a system call's impl file is
+        sys_{name}.c. For groups of system calls which share some
+        implementation features, it is acceptable to use a single .c
+        file to hold each of the implementations.
+
+4. Ensure that the scripts/gen_syscalls.py script is run
+
+        This step will happen automatically iff a clean build is done.
+        Otherwise it's your responsibility to do when a new system call
+        has been introduced.

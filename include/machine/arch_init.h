@@ -47,6 +47,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
  *  2) Set up an output device
  *  3) Perform any pre-paging setup needed for each arch */
 void arch_init(void);
+/* Perform any final arch setup. This can rely on most of the internal
+ * subsystems, such as the PMM and VMA. */
+void arch_init_late(void);
+/* Get ready for interrupts. Once again this can rely on most internal
+ * subsytems. */
 void arch_init_irqs(void);
 
 #endif

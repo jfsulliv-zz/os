@@ -103,6 +103,9 @@ main(multiboot_info_t *mbd)
         ksyms_init(mbd);
         kprintf(0, "Initialized kernel symbols\n");
 
+        /* Set up any late arch-specific stuff. */
+        arch_init_late();
+
         /* Set up the process tables and process allocation */
         proc_system_init();
         kprintf(0, "Initialized process tables, init process\n");

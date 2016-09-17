@@ -73,16 +73,21 @@ CHECKERS=\
 #    -enable-checker alpha.core.CastToStruct \
 
 analyze:
-	scan-build --use-cc=$(CC) -analyze-headers -maxloop 8 $(CHECKERS) $(MAKE)
+	scan-build --use-cc=$(CC) -analyze-headers -maxloop 8 \
+            $(CHECKERS) $(MAKE)
 
 test: CFLAGS += -DRUN_TESTS
 test: all
 
-$(OUT)-$(VERSION): include/version.h $(ALL_OBJS)
+$(OUT)-$(VERSION): include/version.h kernel/syscall/syscall_table.c \
+        $(ALL_OBJS)
 	$(LD) $(LDFLAGS) $(ALL_OBJS) -o $(OUT)-$(VERSION)
 
+kernel/syscall/syscall_table.c:
+	scripts/gen_syscalls.py
+
 include/version.h:
-	echo "#ifndef __VERSION_H__" >> $@
+	echo "#ifndef __VERSION_H__" > $@
 	echo "#define __VERSION_H__\n" >> $@
 	echo "#define KERNEL_NAME \"$(NAME)\"" >> $@
 	echo "#define KERNEL_VERS \"$(VERSION)\"\n" >> $@
@@ -105,7 +110,8 @@ clean_cscope:
 	-$(RM) cscope.out cscope.files
 
 clean: clean_cscope
-	-$(RM) include/version.h ksyms.o ksyms.bin obj_list.txt
+	-$(RM) include/version.h kernel/syscall/syscall_table.c \
+               include/sys/syscalls.h
 	-$(RM) $(wildcard $(ALL_OBJS) $(PRE_OBJS))
 	-$(RM) $(wildcard $(ISO) $(OUT)-$(VERSION) \
                $(OUT)-$(VERSION)$(OUT).tgz $(ISODIR)/boot/$(OUT))

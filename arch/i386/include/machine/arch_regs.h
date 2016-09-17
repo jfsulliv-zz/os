@@ -62,4 +62,10 @@ set_cr3(reg_t val)
                 : : "r" (val));
 }
 
+static inline uint8_t
+get_cpl(struct regs *r)
+{
+        return r->cs & 0x3;
+}
+
 #endif

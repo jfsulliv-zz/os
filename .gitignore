@@ -5,3 +5,5 @@ kernel-*.iso
 isodir/
 cscope.out
 include/version.h
+include/sys/syscalls.h
+kernel/syscall/syscall_table.c

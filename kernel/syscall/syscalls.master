@@ -1,0 +1,6 @@
+# This is a list of the system calls supported by the kernel.
+# Column 0: Number (UNIQUE and preferably incrementing)
+# Column 1: Name (UNIQUE)
+# Column 2: Number of arguments
+0 exit 1
+1 fork 0
