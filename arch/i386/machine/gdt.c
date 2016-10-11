@@ -167,7 +167,7 @@ gdt_install(void)
         gp.limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
 
         /* Default NULL gate */
-        gdt_set_gate(0, &gdte_null);
+        gdt_set_gate(GDT_NULL_IND, &gdte_null);
 
         /* Set up a flat memory layout with separate CS/DS sections for
          * privileged and non-privileged segments. */

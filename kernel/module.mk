@@ -6,6 +6,8 @@ d               := $(dir)
 
 dir := $(d)/mm
 include $(dir)/module.mk
+dir := $(d)/sched
+include $(dir)/module.mk
 dir := $(d)/syscall
 include $(dir)/module.mk
 dir := $(d)/util

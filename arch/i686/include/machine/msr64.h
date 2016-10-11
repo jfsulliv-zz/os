@@ -29,49 +29,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _GDT_I686_H_
-#define _GDT_I686_H_
+#ifndef _MACHINE_MSR32_H_
+#define _MACHINE_MSR32_H_
 
-#define GDT_NULL_IND    0
-#define GDT_KCODE_IND   1
-#define GDT_KDATA_IND   2
-#define GDT_UCODE_IND   3
-#define GDT_UDATA_IND   4
-
-#define NUM_GDT_ENTRIES 5
-
-struct gdt_entry
-{
-        unsigned limit_low:             16;
-        unsigned base_low :             24;
-        unsigned accessed :             1;
-        unsigned read_write:            1;
-        unsigned conforming_expand_down:1;
-        unsigned code:                  1;
-        unsigned always_1:              1;
-        unsigned dpl:                   2;
-        unsigned present:               1;
-        unsigned limit_high:            4;
-        unsigned available:             1;
-        unsigned long_mode:             1;
-        unsigned big:                   1;
-        unsigned gran:                  1;
-        unsigned base_high:             8;
-} __attribute__((packed));
-
-/* This is the format of TSS, Call gates, etc. */
-struct gdt_entry_ext
-{
-        struct gdt_entry bottom;
-        uint32_t base_higher;
-        uint32_t always_0;
-
-} __attribute__((packed));
-
-struct gdt_ptr
-{
-        uint16_t limit;
-        uint64_t base;
-} __attribute__((packed));
+#define MSR_STAR        0xc0000081 /* 32-bit syscall gate address */
+#define MSR_LSTAR       0xc0000082 /* 64-bit syscall gate address */
+#define MSR_CSTAR       0xc0000082 /* compat syscall gate address */
+#define MSR_SFMASK      0xc0000083 /* flags to clear on syscall */
 
 #endif

@@ -43,7 +43,7 @@ syscall_entry_stub:
         ; Cute trick here: use a jump table to avoid having to do a
         ; bunch of conditional branches to load the valid registers.
         neg eax
-        add eax, 5
+        add eax, ASM_SYS_MAXARGS
         lea eax, [.arg_load_table + eax*2]
         jmp eax
 .arg_load_table:
@@ -69,6 +69,7 @@ syscall_entry_stub:
         sysexit
 
 section .bss
-SYSCALL_STACK_BASE: resb 512 ; TODO make this per-CPU.
+align 4096
+SYSCALL_STACK_BASE: resb 4096 ; TODO make this per-CPU.
 global SYSCALL_STACK_BASE_TOP
 SYSCALL_STACK_BASE_TOP:

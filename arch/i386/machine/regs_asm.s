@@ -65,8 +65,8 @@
 %endmacro
 
 ; Swap register contexts.
-; rdi : struct regs *saveregs
-; rsi : struct regs *newregs
+; esp+8  : struct regs *saveregs
+; esp+12 : struct regs *newregs
 global context_switch
 context_switch:
         push ebp
@@ -82,3 +82,14 @@ context_switch:
         LOAD_REGS eax
         pop ebp
         ret
+
+; Jump to userspace, dropping into ring 3. Does not return!
+; esp+8  : void *call_addr
+; esp+12 : void *user_stack_top 
+global jump_to_userspace
+jump_to_userspace:
+        push dword 3 | (0x8 * 4) ; User SS
+        push dword [ebp+12] ; User stack
+        push dword 3 | (0x8 * 3) ; User CS
+        push dword [ebp+8] ; User code
+        retf

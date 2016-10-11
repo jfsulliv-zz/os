@@ -29,49 +29,21 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _GDT_I686_H_
-#define _GDT_I686_H_
+#include <machine/gdt.h>
+#include <machine/msr.h>
+#include <machine/syscall.h>
 
-#define GDT_NULL_IND    0
-#define GDT_KCODE_IND   1
-#define GDT_KDATA_IND   2
-#define GDT_UCODE_IND   3
-#define GDT_UDATA_IND   4
+extern char SYSCALL_STACK_BASE_TOP;
 
-#define NUM_GDT_ENTRIES 5
-
-struct gdt_entry
+void
+init_msrs(void)
 {
-        unsigned limit_low:             16;
-        unsigned base_low :             24;
-        unsigned accessed :             1;
-        unsigned read_write:            1;
-        unsigned conforming_expand_down:1;
-        unsigned code:                  1;
-        unsigned always_1:              1;
-        unsigned dpl:                   2;
-        unsigned present:               1;
-        unsigned limit_high:            4;
-        unsigned available:             1;
-        unsigned long_mode:             1;
-        unsigned big:                   1;
-        unsigned gran:                  1;
-        unsigned base_high:             8;
-} __attribute__((packed));
-
-/* This is the format of TSS, Call gates, etc. */
-struct gdt_entry_ext
-{
-        struct gdt_entry bottom;
-        uint32_t base_higher;
-        uint32_t always_0;
-
-} __attribute__((packed));
-
-struct gdt_ptr
-{
-        uint16_t limit;
-        uint64_t base;
-} __attribute__((packed));
-
-#endif
+        /* TODO once we enable multiple CPUs we need to set these for
+         * each logical core. */
+        /* Assign the GDT entry that the kernel code runs at. */
+        wrmsrl(MSR_SYSENTER_CS, GDT_KCODE_IND);
+        /* We will manage our own stack, so set the initial stack to 0 */
+        wrmsrl(MSR_SYSENTER_ESP, (uint64_t)&SYSCALL_STACK_BASE_TOP);
+        /* The entry point will be the syscall_entry function */
+        wrmsrl(MSR_SYSENTER_EIP, (uint64_t)syscall_entry_stub);
+}

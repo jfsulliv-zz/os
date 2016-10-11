@@ -63,7 +63,7 @@ static struct gdt_entry gdte_null = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_code = {
+static struct gdt_entry gdte_kcode = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -81,7 +81,7 @@ static struct gdt_entry gdte_code = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_data = {
+static struct gdt_entry gdte_kdata = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -90,6 +90,42 @@ static struct gdt_entry gdte_data = {
         .code = 0,
         .always_1 = 1,
         .dpl = 0,
+        .present = 1,
+        .limit_high = 0xf,
+        .available = 1,
+        .long_mode = 0,
+        .big = 1,
+        .gran = 1,
+        .base_high = 0
+};
+
+static struct gdt_entry gdte_ucode = {
+        .limit_low = 0xffff,
+        .base_low  = 0,
+        .accessed  = 0,
+        .read_write = 1,
+        .conforming_expand_down = 0,
+        .code = 1,
+        .always_1 = 1,
+        .dpl = 3,
+        .present = 1,
+        .limit_high = 0xf,
+        .available = 1,
+        .long_mode = 1,
+        .big = 0,
+        .gran = 1,
+        .base_high = 0
+};
+
+static struct gdt_entry gdte_udata = {
+        .limit_low = 0xffff,
+        .base_low  = 0,
+        .accessed  = 0,
+        .read_write = 1,
+        .conforming_expand_down = 0,
+        .code = 0,
+        .always_1 = 1,
+        .dpl = 3,
         .present = 1,
         .limit_high = 0xf,
         .available = 1,
@@ -123,12 +159,14 @@ gdt_install(void)
         gp.limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
 
         /* Default NULL gate */
-        gdt_set_gate(0, &gdte_null);
+        gdt_set_gate(GDT_NULL_IND, &gdte_null);
 
         /* Set up a flat memory layout with separate CS/DS sections for
          * privileged and non-privileged segments. */
-        gdt_set_gate(GDT_CODE_IND, &gdte_code);
-        gdt_set_gate(GDT_DATA_IND, &gdte_data);
+        gdt_set_gate(GDT_KCODE_IND, &gdte_kcode);
+        gdt_set_gate(GDT_KDATA_IND, &gdte_kdata);
+        gdt_set_gate(GDT_UCODE_IND, &gdte_ucode);
+        gdt_set_gate(GDT_UDATA_IND, &gdte_udata);
 
         gdt_flush((uint64_t)&gp);
 

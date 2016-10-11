@@ -32,12 +32,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _GDT_I386_H_
 #define _GDT_I386_H_
 
-#define NUM_GDT_ENTRIES 6
+#define GDT_NULL_IND    0
 #define GDT_KCODE_IND   1
 #define GDT_KDATA_IND   2
 #define GDT_UCODE_IND   3
 #define GDT_UDATA_IND   4
 #define GDT_TSS_IND     5
+#define NUM_GDT_ENTRIES 6
 
 struct gdt_entry
 {

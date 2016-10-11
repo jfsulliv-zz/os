@@ -39,21 +39,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/pmm.h>
 #include <sys/panic.h>
 
-extern char SYSCALL_STACK_BASE_TOP;
-
-static void
-arch_init_fastsyscalls()
-{
-        /* TODO once we enable multiple CPUs we need to set these for
-         * each logical core. */
-        /* Assign the GDT entry that the kernel code runs at. */
-        wrmsrl(IA32_SYSENTER_CS, GDT_KCODE_IND);
-        /* We will manage our own stack, so set the initial stack to 0 */
-        wrmsrl(IA32_SYSENTER_ESP, (uint64_t)&SYSCALL_STACK_BASE_TOP);
-        /* The entry point will be the syscall_entry function */
-        wrmsrl(IA32_SYSENTER_EIP, syscall_entry_stub);
-}
-
 void
 arch_init(void)
 {
@@ -65,7 +50,7 @@ arch_init(void)
 void
 arch_init_late(void)
 {
-        arch_init_fastsyscalls();
+        init_msrs();
 }
 
 /* We assume that interrupts are disabled when this is called. */

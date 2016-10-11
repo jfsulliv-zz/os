@@ -53,6 +53,14 @@ memlimits_t limits;
 extern char sbss, ebss;
 
 static void
+do_some_privileged_stuff(void)
+{
+        __asm__ __volatile__("rdmsr" : : : "edx", "eax" );
+        kprintf(0, "Still alive!\n");
+        for(;;);
+}
+
+static void
 zero_bss(void)
 {
         size_t sz = &ebss - &sbss;
@@ -117,12 +125,15 @@ main(multiboot_info_t *mbd)
         enable_interrupts();
         kprintf(0, "Enabled interrupts\n");
 
+
+        char tmpstack[1024];
+        bzero(tmpstack, sizeof(tmpstack));
+        jump_to_userspace(do_some_privileged_stuff, tmpstack+sizeof(tmpstack));
         kprintf(0, "Idling!\n");
         while (1)
         {
                 timer_wait(1000);
                 kprintf(0, "x");
         }
-
         for (;;);
 }

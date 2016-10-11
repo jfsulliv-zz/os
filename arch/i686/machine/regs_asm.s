@@ -93,3 +93,14 @@ context_switch:
         LOAD_REGS rsi
         pop rbp
         retq
+
+; Jump to userspace, dropping into ring 3. Does not return!
+; rdi : void *call_addr
+; rsi : void *user_stack_top
+global jump_to_userspace
+jump_to_userspace:
+        push qword 3 | (0x8 * 4) ; User SS
+        push qword rsi ; User stack
+        push qword 3 | (0x8 * 3) ; User CS
+        push qword rdi ; User code
+        retf

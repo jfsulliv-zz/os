@@ -32,8 +32,18 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _MACHINE_MSR_H_
 #define _MACHINE_MSR_H_
 
+#include <machine/params.h>
 #include <machine/regs.h>
 #include <stdint.h>
+
+#if WORD_SIZE == 32
+#include <machine/msr32.h>
+#else
+#include <machine/msr64.h>
+#endif
+
+void
+init_msrs(void);
 
 static inline void
 get_msr(uint32_t msr, uint32_t *low, uint32_t *high)
@@ -56,9 +66,5 @@ wrmsrl(uint32_t msr, uint64_t val)
                 "wrmsr" : : "c" (msr), "d" ((uint32_t)val),
                             "a" ((uint32_t)(val >> 32)));
 }
-
-#define IA32_SYSENTER_CS        0x174
-#define IA32_SYSENTER_ESP       0x175
-#define IA32_SYSENTER_EIP       0x176
 
 #endif
