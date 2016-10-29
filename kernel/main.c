@@ -46,6 +46,20 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/proc.h>
 #include <sys/stdio.h>
 #include <sys/string.h>
+#include <sys/sysinit.h>
+
+char const *startup_banner =
+"===============================\n"
+"=                             =\n"
+"=       James' cool OS        =\n"
+"=                             =\n"
+"=                             =\n"
+"=                             =\n"
+"=          Copyright (c) 2016 =\n"
+"===============================\n";
+
+char const *sysinit_ready_msg =
+        "Arch-specific initialization complete. Starting sysinit...\n";
 
 memlimits_t limits;
 
@@ -58,6 +72,22 @@ zero_bss(void)
         size_t sz = &ebss - &sbss;
         bzero(&sbss, sz);
 }
+
+static int
+print_sysinit_start(void)
+{
+        kprintf(0, sysinit_ready_msg);
+        return 0;
+}
+SYSINIT_STEP("print_sysinit_start", print_sysinit_start, SYSINIT_EARLY, 0);
+
+static int
+print_banner(void)
+{
+        kprintf(0, startup_banner);
+        return 0;
+}
+SYSINIT_STEP("print_banner", print_banner, SYSINIT_LATE, 0);
 
 int
 main(multiboot_info_t *mbd)
@@ -117,6 +147,8 @@ main(multiboot_info_t *mbd)
         enable_interrupts();
         kprintf(0, "Enabled interrupts\n");
 
+        /* Run the rest of the system setup. */
+        sys_init();
 
         kprintf(0, "Idling!\n");
         while (1)

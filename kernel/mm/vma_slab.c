@@ -830,7 +830,6 @@ kfree(void *addr)
                 return;
 
         if (bp->ind >= vma.num_kmalloc_caches) {
-                (addr, bp->order);
                 bug_on(vma.kmalloc_big_cache.big_bused <
                         (unsigned long)PAGE_SIZE<<bp->order,
                         "Not enough big bytes for freeing.");

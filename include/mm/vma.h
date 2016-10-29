@@ -44,6 +44,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 /* Initialize the VMA subsystem. */
 void vma_init(void);
+
 /* Report vital statistics of the VMA subsystem. */
 void vma_report(void);
 __test void vma_test(void);

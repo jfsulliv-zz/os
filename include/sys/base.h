@@ -54,4 +54,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #endif
 
+#define GLOBAL(sym) __asm(".globl " #sym);
+#define CONCAT(a,b) a ## b
+
 #endif
