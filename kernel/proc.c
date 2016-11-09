@@ -227,11 +227,11 @@ free_process(proc_t *p)
 }
 
 void
-switch_process(proc_t *p, proc_t *nextp)
+switch_process(proc_t *nextp)
 {
-        bug_on(!p || !nextp, "Switching to invalid PCB");
-        bug_on(p != current_process(),
-               "Switching off of non-executing process");
+        bug_on(!nextp, "Switching to invalid PCB");
+
+        proc_t *p = current_process();
 
         set_current(nextp);
         kprintf(0, "Switched current\n");

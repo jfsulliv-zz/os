@@ -168,10 +168,9 @@ proc_t *copy_process(proc_t *, fork_req_t *);
 /* Free the resources held by the given process. */
 void free_process(proc_t *);
 
-/* Switch to the next process to be scheduled. If there is no next
- * process, current_process() stays live.
+/* Switch the running process to nextp.
  * We save the register state into the PCB of current() at this point. */
-void switch_to_next_process(struct regs *regs);
+void switch_process(proc_t *nextp);
 
 /* Initializers and deinitializers for PCBs. */
 void proc_init(proc_t *);
