@@ -12,6 +12,8 @@ dir := $(d)/syscall
 include $(dir)/module.mk
 dir := $(d)/util
 include $(dir)/module.mk
+dir := $(d)/fs
+include $(dir)/module.mk
 
 SRCS_$(d)       := $(d)/main.c $(d)/kprintf.c $(d)/ksyms.c \
                    $(d)/multiboot.c $(d)/proc.c \

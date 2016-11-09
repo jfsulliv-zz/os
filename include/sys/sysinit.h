@@ -47,8 +47,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define SYSINIT_SCHED   (1 << 1)
 #define SYSINIT_VMOBJ   (1 << 2)
 #define SYSINIT_VMAP    (1 << 3)
-#define SYSINIT_LATE    (1 << 4)
-#define SYSINIT_NUM_MODULES 5
+#define SYSINIT_FS      (1 << 4)
+#define SYSINIT_LATE    (1 << 5)
+#define SYSINIT_NUM_MODULES 6
 
 /* A single initialization step.
  *
