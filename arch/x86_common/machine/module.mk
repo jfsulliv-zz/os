@@ -5,8 +5,7 @@ dirstack_$(sp)  := $(d)
 d               := $(dir)
 
 SRCS_$(d) := $(d)/arch_init.c $(d)/tty.c $(d)/irq.c \
-             $(d)/pic.c $(d)/timer.c \
-             $(d)/fault.c
+             $(d)/pic.c $(d)/pit.c $(d)/fault.c
 
 d               := $(dirstack_$(sp))
 sp              := $(basename $(sp))

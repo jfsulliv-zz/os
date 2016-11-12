@@ -33,7 +33,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/arch_init.h>
 #include <machine/irq.h>
 #include <machine/regs.h>
-#include <machine/timer.h>
 #include <machine/tty.h>
 #include <mm/paging.h>
 #include <mm/pfa.h>
@@ -47,6 +46,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/stdio.h>
 #include <sys/string.h>
 #include <sys/sysinit.h>
+#include <sys/timer.h>
 
 char const *startup_banner =
 "===============================\n"
@@ -153,7 +153,7 @@ main(multiboot_info_t *mbd)
         kprintf(0, "Idling!\n");
         while (1)
         {
-                timer_wait(1000);
+                timer_wait_ms(1000);
                 kprintf(0, "x");
         }
         for (;;);

@@ -9,8 +9,12 @@ CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
 ASM     = nasm
 AFLAGS  =-felf$(BITS) $(patsubst %,-i%/,$(INC))
 
+LIBGCC=$(shell $(ARCH)-elf-gcc -print-libgcc-file-name)
+LIBGCC_DIR=$(shell dirname $(LIBGCC))
+
 LD=$(ARCH)-elf-ld
-LDFLAGS = -melf_$(ARCH_TC) -nostdlib -T arch/$(ARCH)/build/linker.ld
+LDFLAGS = -melf_$(ARCH_TC) -T arch/$(ARCH)/build/linker.ld \
+          -L$(LIBGCC_DIR) -nostdlib -lgcc
 
 dir := arch/$(ARCH)
 include $(dir)/module.mk

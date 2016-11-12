@@ -81,7 +81,7 @@ test: all
 
 $(OUT)-$(VERSION): include/version.h kernel/syscall/syscall_table.c \
         $(ALL_OBJS)
-	$(LD) $(LDFLAGS) $(ALL_OBJS) -o $(OUT)-$(VERSION)
+	$(LD) $(ALL_OBJS) $(LDFLAGS) -o $(OUT)-$(VERSION)
 
 kernel/syscall/syscall_table.c:
 	scripts/gen_syscalls.py

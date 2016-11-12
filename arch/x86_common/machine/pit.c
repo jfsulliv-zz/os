@@ -30,59 +30,40 @@ THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <machine/irq.h>
-#include <machine/timer.h>
+#include <machine/pit.h>
+#include <sys/timer.h>
 
-static volatile long timer_ticks = 0;
-static volatile long seconds = 0;
-static int sec_rate = 18; /* Default msec_rate */
+#include <stdint.h>
 
-void timer_wait(int ms)
+static volatile unsigned long timer_ticks = 0;
+
+static unsigned long const DEFAULT_TICKS = 18;
+static unsigned long ticks_per_msec = DEFAULT_TICKS;
+
+uint64_t timer_get_usec(void)
 {
-        int end = (ms / 1000) + seconds;
-        while (seconds < end);
+        return timer_ticks / ticks_per_msec * 1000;
 }
 
-long
-timer_get_ticks(void)
-{
-        return timer_ticks;
-}
-
-long
-timer_get_seconds(void)
-{
-        return seconds;
-}
-
-void timer_wait_ticks(int n)
-{
-        int end = n + timer_ticks;
-        while (timer_ticks < end);
-}
-
-void timer_phase(int hz)
+void pit_set_phase(int hz)
 {
         int div = PIT_BASE / hz;
         unsigned char cmd = (PIT_COUNTER(0) | PIT_RWMODE(0x3) |
                              PIT_MODE(PIT_MODE_SQRWV) | PIT_BCD(0));
-        sec_rate = hz;
+        ticks_per_msec = hz / 1000;
         outportb(PIT_COMMAND, cmd);
         outportb(PIT_DATA_CHAN0, div & 0xFF);
         outportb(PIT_DATA_CHAN0, div >> 8);
 }
 
-void timer_handler(const struct irq_ctx *unused __attribute__((unused)))
+static void timer_handler(const struct irq_ctx *unused
+                          __attribute__((unused)))
 {
         ++timer_ticks;
-
-        if (timer_ticks % sec_rate == 0)
-        {
-                ++seconds;
-        }
+        timer_pollevents();
 }
 
-void timer_install(void)
+void pit_install(void)
 {
         irq_install_handler(0, timer_handler);
 }
-

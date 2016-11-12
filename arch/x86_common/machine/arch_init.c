@@ -35,7 +35,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/msr.h>
 #include <machine/pic.h>
 #include <machine/syscall.h>
-#include <machine/timer.h>
+#include <machine/pit.h>
 #include <mm/pmm.h>
 #include <sys/panic.h>
 
@@ -60,6 +60,6 @@ arch_init_irqs(void)
         bug_on(!pmm_initialized(), "IRQs initialized before pmm.");
         irq_install();
         pic_remap(PIC1_OFFSET, PIC2_OFFSET);
-        timer_install();
-        timer_phase(1000);
+        pit_install();
+        pit_set_phase(1000);
 }

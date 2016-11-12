@@ -33,11 +33,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define __MACHINE_TIMER_H__
 
 /*
- * machine/timer.h
+ * machine/pit.h
  *
  * James Sullivan <sullivan.james.f@gmail.com>
  * 07/15
  */
+
+#include <stdint.h>
 
 #define PIT_DATA_CHAN0  0x40
 #define PIT_DATA_CHAN1  0x41
@@ -58,10 +60,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define PIT_BASE        1193180
 
-void timer_wait(int ms);
-long timer_get_ticks(void);
-long timer_get_seconds(void);
-void timer_phase(int hz);
-void timer_install(void);
+void pit_set_phase(int hz);
+void pit_install(void);
 
 #endif
