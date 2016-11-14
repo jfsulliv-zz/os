@@ -8,19 +8,19 @@ environment, with a focus on modern development practices and tools.
 So far, there is only support for x86 and x86_64, with ARM(64) as a
 possible future target.
 
-### Features
-- Support for x86 (i386) and x86_64 (i686) platforms
-- Virtual memory allocator (slab)
-- Debugging support (stack tracing, function name resolution, etc)
-- Very basic process support
+### What's done
+- Page frame allocator
+- Virtual memory allocator (SLAB allocator)
+- System call entry/exit points (x86 only)
+- Context switching (x86 only)
+- Debugging support (stack traces, function name resolution, etc)
 
 ### In progress
-- System calls and context switching
+- System calls and context switching (x86_64)
+- Scheduler
 
 ### TODO
 - Filesystem abstraction layer and some initial FS implementations
 - Device abstraction layer, support for some hardware
 - Network stack
-- Process model, synchronization primitives
 - IPC
-- Scheduler
