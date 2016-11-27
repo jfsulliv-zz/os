@@ -32,22 +32,39 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _SYS_PANIC_H_
 #define _SYS_PANIC_H_
 
-#define panic(why) do {                                 \
-        _panic(__FILE__, __func__, __LINE__, why);      \
-        for(;;); /* Shut up static analyzers */         \
+#include <machine/regs.h>
+#include <sys/kprintf.h>
+
+#define panic(why, ...) do {                                    \
+        _panic(__FILE__, __func__, __LINE__, why, ##__VA_ARGS__); \
+        for(;;); /* Shut up static analyzers */                 \
 } while(0)
 
-#define bug(why) do {                                   \
-        _bug(__FILE__, __func__, __LINE__, why);        \
-        for(;;); /* Shut up static analyzers */         \
+#define bug(why, ...) do {                                      \
+        _bug(__FILE__, __func__, __LINE__, why, ##__VA_ARGS__); \
+        for(;;); /* Shut up static analyzers */                 \
 } while(0)
 
-#define bug_on(cond,why) if (cond) {                    \
-        _bug(__FILE__, __func__, __LINE__, why);        \
-        for(;;); /* Shut up static analyzers */         \
+#define bug_on(cond,why, ...) if (cond) {                       \
+        _bug(__FILE__, __func__, __LINE__, why, ##__VA_ARGS__); \
+        for(;;); /* Shut up static analyzers */                 \
 }
 
-void _panic(const char *file, const char *fun, int line, const char *why);
-void _bug(const char *file, const char *fun, int line, const char *why);
+
+#define _panic(file, fun, line, why, ...) do {                  \
+        kprintf(0, "***PANIC***\n");                            \
+        kprintf(0, "%s: ", fun);                                \
+        kprintf(0, why, ##__VA_ARGS__);                         \
+        kprintf(0, " (%s:%d)\n", file, line);                   \
+        backtrace(10);                                          \
+} while(0);
+
+#define _bug(file, fun, line, why, ...) do {                    \
+        kprintf(0, "***BUG***\n");                              \
+        kprintf(0, "%s: ", fun);                                \
+        kprintf(0, why, ##__VA_ARGS__);                         \
+        kprintf(0, " (%s:%d)\n", file, line);                   \
+        backtrace(10);                                          \
+} while(0);
 
 #endif
