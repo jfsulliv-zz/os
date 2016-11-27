@@ -1,16 +1,19 @@
+LIBGCC=$(shell $(ARCH)-elf-gcc -print-libgcc-file-name)
+LIBGCC_DIR=$(shell dirname $(LIBGCC))
+
+STDINC_DIR=$(LIBGCC_DIR)/include
+
 CC=clang
 WARNINGS := -Wall -Wextra -Werror=implicit-function-declaration
 CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
-            -fno-builtin $(patsubst %,-I%,$(INC)) $(MC) \
             --target=$(ARCH_TGT) -march=$(MARCH) \
-            -fno-asynchronous-unwind-tables -nostdinc++ \
-            -mno-red-zone -mno-mmx -mno-sse -mno-sse2
+            -fno-asynchronous-unwind-tables -nostdinc++ -nostdinc \
+            -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+            $(patsubst %,-I%,$(INC)) $(MC) \
+            -I $(STDINC_DIR)
 
 ASM     = nasm
 AFLAGS  =-felf$(BITS) $(patsubst %,-i%/,$(INC))
-
-LIBGCC=$(shell $(ARCH)-elf-gcc -print-libgcc-file-name)
-LIBGCC_DIR=$(shell dirname $(LIBGCC))
 
 LD=$(ARCH)-elf-ld
 LDFLAGS = -melf_$(ARCH_TC) -T arch/$(ARCH)/build/linker.ld \
