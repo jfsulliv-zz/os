@@ -38,6 +38,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/pfa.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
+#include <sched/scheduler.h>
 #include <sys/config.h>
 #include <sys/debug.h>
 #include <sys/ksyms.h>
@@ -139,16 +140,22 @@ main(multiboot_info_t *mbd)
         /* Set up the process tables and process allocation */
         proc_system_init();
         kprintf(0, "Initialized process tables, init process\n");
-        DO_TEST(proc_test);
 
-        /* Now that we have all of that stuff, we can get ready for
-         * IRQs. */
+        /* Get the interrupt handlers and timers ready. */
         arch_init_irqs();
+        timer_set_pollinterval(1 * USEC_PER_MSEC);
+
+        /* Run the rest of the system setup. This should be the last
+         * thing done before we enable interrupts and start the init
+         * process. */
+        sys_init();
+
         enable_interrupts();
         kprintf(0, "Enabled interrupts\n");
 
-        /* Run the rest of the system setup. */
-        sys_init();
+        /* Now that interrupts are enabled, we start the scheduler
+         * and drop into the first process. */
+        sched_start(init_procp);
 
         kprintf(0, "Idling!\n");
         while (1)

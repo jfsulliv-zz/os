@@ -108,7 +108,7 @@ backtrace(unsigned int max_frames)
 }
 
 void
-set_stack(struct regs *regs, reg_t stack, size_t stack_size)
+set_stack(struct regs *regs, reg_t stack, unsigned long stack_size)
 {
         regs->esp = stack + stack_size - 4;
         regs->ebp = 0;

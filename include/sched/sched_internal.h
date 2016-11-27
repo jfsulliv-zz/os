@@ -29,11 +29,36 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _SCHED_SCHED_INTERNAL_H_
+#define _SCHED_SCHED_INTERNAL_H_
 
-#define CONF_VMA_SLAB 1
-#define CONF_SCHED_ROUNDROBIN 1
-#define CONF_DEBUG 1
+#include <sys/proc.h>
+
+/* Common structure for scheduler implementations.
+ * Each implementation must define a scheduler_t which contains various
+ * scheduling routines. The generic scheduler implementation will call
+ * into the active scheduler's routines when a scheduling operation
+ * should take place.
+ */
+typedef struct scheduler {
+        /* Perform scheduler-specific setup necessary before use. */
+        int  (*sched_init_impl)(void);
+        /* Starts the scheduler by placing initproc into its run queue. */
+        void (*sched_start_impl)(proc_t *initproc);
+        /* Scheduler-specific initialization of the given PCB. */
+        void (*sched_initproc_impl)(proc_t *initproc);
+        /* Add the given process to the run queue. */
+        void (*sched_add_impl)(proc_t *proc);
+        /* Remove the given process from the run queue. */
+        void (*sched_rem_impl)(proc_t *proc);
+        /* Returns the next process to schedule. */
+        proc_t *(*sched_nextproc_impl)(void);
+        /* Called when the scheduler timer expires, on a regular 
+         * interval. */
+        void (*sched_tick_impl)(void);
+        const char name[32];
+} scheduler_t;
+extern scheduler_t *scheduler;
+
 
 #endif

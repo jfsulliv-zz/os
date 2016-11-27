@@ -29,11 +29,35 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _SCHED_SCHEDULER_H_
+#define _SCHED_SCHEDULER_H_
 
-#define CONF_VMA_SLAB 1
-#define CONF_SCHED_ROUNDROBIN 1
-#define CONF_DEBUG 1
+/*
+ * sched/scheduler.h - Task Scheduling API 
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 11/16
+ */
+
+#include <sys/config.h>
+#include <sys/proc.h>
+
+/* Called to start scheduling init. */
+void sched_start(proc_t *initproc);
+
+/* Scheduler hooks for processes. */
+
+/* Register child into the scheduler's run queue, ensuring that child
+ * will run before parent. */
+void sched_fork(proc_t *parent, proc_t *child);
+
+/* Remove the process from the run queue. */
+void sched_exit(proc_t *);
+
+/* Yield the CPU for the given process. */
+void sched_yield(proc_t *);
+
+/* Returns the next process to be scheduled. */
+proc_t *sched_next(void);
 
 #endif

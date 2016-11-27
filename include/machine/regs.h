@@ -33,7 +33,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define _MACHINE_REGS_H_
 
 #include <machine/arch_regs.h>
-#include <sys/types.h>
+#include <machine/types.h>
+#include <stdint.h>
 
 __attribute__((noreturn)) void jump_to_userspace(void *addr,
                                                  void *stack_top);
@@ -42,6 +43,6 @@ void dump_regs_from(const struct regs *r);
 void dump_regs(void);
 void get_regs(struct regs *to);
 void backtrace(unsigned int max);
-void set_stack(struct regs *regs, reg_t stack, size_t stack_size);
+void set_stack(struct regs *regs, reg_t stack, unsigned long stack_size);
 
 #endif

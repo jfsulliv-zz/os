@@ -61,5 +61,4 @@ arch_init_irqs(void)
         irq_install();
         pic_remap(PIC1_OFFSET, PIC2_OFFSET);
         pit_install();
-        pit_set_phase(1000);
 }

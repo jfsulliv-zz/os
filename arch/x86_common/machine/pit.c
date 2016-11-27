@@ -32,6 +32,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/irq.h>
 #include <machine/pit.h>
 #include <sys/timer.h>
+#include <sys/panic.h>
 
 #include <stdint.h>
 
@@ -40,13 +41,29 @@ static volatile unsigned long timer_ticks = 0;
 static unsigned long const DEFAULT_TICKS = 18;
 static unsigned long ticks_per_msec = DEFAULT_TICKS;
 
-uint64_t timer_get_usec(void)
+static void pit_set_phase(unsigned int hz);
+
+unsigned long timer_get_usec(void)
 {
         return timer_ticks / ticks_per_msec * 1000;
 }
 
-void pit_set_phase(int hz)
+void timer_set_pollinterval(unsigned long us)
 {
+        unsigned int phase_hz = USEC_PER_SEC / us;
+        pit_set_phase(phase_hz);
+}
+
+unsigned long timer_pollinterval(void)
+{
+        return ticks_per_msec * USEC_PER_MSEC;
+}
+
+
+static void pit_set_phase(unsigned int hz)
+{
+        bug_on(hz < PIT_MIN_HZ || hz > PIT_MAX_HZ,
+                "Unsupported PIT frequency %d", hz);
         int div = PIT_BASE / hz;
         unsigned char cmd = (PIT_COUNTER(0) | PIT_RWMODE(0x3) |
                              PIT_MODE(PIT_MODE_SQRWV) | PIT_BCD(0));

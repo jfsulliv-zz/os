@@ -60,7 +60,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define PIT_BASE        1193180
 
-void pit_set_phase(int hz);
+#define PIT_MIN_HZ      18
+#define PIT_MAX_HZ      1193182
+
 void pit_install(void);
 
 #endif

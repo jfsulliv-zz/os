@@ -29,11 +29,11 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _SCHED_ROUNDROBIN_H_
+#define _SCHED_ROUNDROBIN_H_
 
-#define CONF_VMA_SLAB 1
-#define CONF_SCHED_ROUNDROBIN 1
-#define CONF_DEBUG 1
+#include <sched/sched_internal.h>
+
+extern scheduler_t round_robin_scheduler;
 
 #endif

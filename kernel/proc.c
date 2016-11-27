@@ -31,12 +31,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <mm/pmm.h>
 #include <mm/vma.h>
+#include <sched/scheduler.h>
 #include <sys/kprintf.h>
 #include <sys/string.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
 
-proc_t init_proc;
+static proc_t init_proc;
+proc_t *init_procp;
 
 proc_t **proc_table;
 pid_t    pid_max = 65535; /* Default value */
@@ -135,6 +137,7 @@ proc_system_init_initproc(void)
         init_proc.id.ppid = 0;
         init_proc.control.pmm = &init_pmm;
         set_current(&init_proc);
+        init_procp = &init_proc;
 }
 
 static void
@@ -213,6 +216,7 @@ copy_process(proc_t *par, fork_req_t *req)
                 free_process(p);
                 return NULL;
         }
+        sched_fork(par, p);
         return p;
 }
 

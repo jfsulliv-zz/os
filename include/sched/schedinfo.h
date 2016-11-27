@@ -29,11 +29,23 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _SCHED_SCHEDINFO_H_
+#define _SCHED_SCHEDINFO_H_
 
-#define CONF_VMA_SLAB 1
-#define CONF_SCHED_ROUNDROBIN 1
-#define CONF_DEBUG 1
+#include <sys/proc.h>
+
+#ifdef CONF_SCHED_ROUNDROBIN
+
+struct sched_info {
+        struct process *prevp;          // The process scheduled before this
+        struct process *nextp;          // The next process to scheduler
+        uint64_t run_time;      // Total time scheduled (us)
+};
+
+#else
+#error No scheduler configured (CONF_SCHED_*)
+#endif
+
+typedef struct sched_info schedinfo_t;
 
 #endif

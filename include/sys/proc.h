@@ -42,6 +42,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/regs.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
+#include <sched/schedinfo.h>
 #include <sys/debug.h>
 #include <util/list.h>
 
@@ -93,8 +94,10 @@ typedef struct process_state {
         sched_state_t sched_state;      /* process execution state */
 } proc_state_t;
 
-#define PROC_STATE_INIT ((proc_state_t)\
-{       .regs = { 0 },                  \
+#define PROC_STATE_INIT ((proc_state_t) \
+{       .uregs = { 0 },                 \
+        .regs = { 0 },                  \
+        .kstack = NULL,                 \
         .sched_state = PROC_STATE_NEW,  \
 })
 
@@ -103,14 +106,15 @@ struct process;
 typedef struct process_control {
         struct list_head children;      /* Child process list */
         struct list_head pr_list;       /* Entry in the above list */
-        struct process *next;           /* Next process to schedule. */
+        struct sched_info schedinfo;    /* Scheduler metadata */
         pmm_t *pmm;                     /* Physical memory mappings */
 } proc_control_t;
 
-#define PROC_CONTROL_INIT(c) ((proc_control_t)\
+#define PROC_CONTROL_INIT(c) ((proc_control_t)  \
 {       .children = LIST_HEAD_INIT(c.children), \
         .pr_list = LIST_HEAD_INIT(c.pr_list),   \
-        .pmm = NULL                             \
+        .schedinfo = { 0 },                     \
+        .pmm = NULL,                            \
 })
 
 /* The global process control block which contains:
@@ -135,7 +139,7 @@ extern proc_t **proc_table;
 extern pid_t    pid_max;
 
 /* The init process */
-extern proc_t init_proc;
+extern proc_t *init_procp;
 
 /* Initialize the proc subsystem. */
 void proc_system_init(void);

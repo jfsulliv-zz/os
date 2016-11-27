@@ -44,8 +44,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * and SYSINIT_LATE is at index SYSINIT_NUM_MODULES - 1.
  * */
 #define SYSINIT_EARLY   (1 << 0)
-#define SYSINIT_LATE    (1 << 1)
-#define SYSINIT_NUM_MODULES 2
+#define SYSINIT_SCHED   (1 << 1)
+#define SYSINIT_LATE    (1 << 2)
+#define SYSINIT_NUM_MODULES 3
 
 /* A single initialization step.
  *
