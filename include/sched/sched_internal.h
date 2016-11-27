@@ -51,6 +51,8 @@ typedef struct scheduler {
         void (*sched_add_impl)(proc_t *proc);
         /* Remove the given process from the run queue. */
         void (*sched_rem_impl)(proc_t *proc);
+        /* Yields the slice for the given process. */
+        void (*sched_yield_impl)(proc_t *proc);
         /* Returns the next process to schedule. */
         proc_t *(*sched_nextproc_impl)(void);
         /* Called when the scheduler timer expires, on a regular 

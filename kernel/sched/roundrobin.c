@@ -42,6 +42,7 @@ static void rr_start(proc_t *initproc);
 static void rr_initproc(proc_t *initproc);
 static void rr_add(proc_t *proc);
 static void rr_rem(proc_t *proc);
+static void rr_yield(proc_t *proc);
 static proc_t *rr_nextproc(void);
 static void rr_tick(void);
 
@@ -51,6 +52,7 @@ scheduler_t round_robin_scheduler = {
         .sched_initproc_impl    = rr_initproc,
         .sched_add_impl         = rr_add,
         .sched_rem_impl         = rr_rem,
+        .sched_yield_impl       = rr_yield,
         .sched_nextproc_impl    = rr_nextproc,
         .sched_tick_impl        = rr_tick,
         .name                   = "roundrobin"
@@ -94,6 +96,16 @@ rr_rem(proc_t *proc)
                 = proc->control.schedinfo.prevp;
         proc->control.schedinfo.prevp->control.schedinfo.nextp
                 = proc->control.schedinfo.nextp;
+}
+
+static void
+rr_yield(proc_t *proc)
+{
+        // Yielding is nonsensical when yielding to oneself.
+        if (proc->control.schedinfo.nextp != proc) {
+                rr_rem(proc);
+                rr_add(proc);
+        }
 }
 
 static proc_t *
