@@ -68,9 +68,13 @@ pmm_init_late(void);
 pmm_t *
 pmm_create(void);
 
-/* Copy the page table mappings from one pmm to another. */
+/* Copy the user page table mappings from one pmm to another. */
 int
-pmm_copy(pmm_t *dst, pmm_t *src);
+pmm_copy_user(pmm_t *dst, const pmm_t *src);
+
+/* Copy the kernel page table mappings from one pmm to another. */
+int
+pmm_copy_kern(pmm_t *dst, const pmm_t *src);
 
 /* Decrease the reference count to the physical map. When the refcount
  * is zero, its resources are freed. We assume that at this point the

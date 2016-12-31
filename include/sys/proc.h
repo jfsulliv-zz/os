@@ -39,6 +39,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 05/16
  */
 
+#include <machine/percpu.h>
 #include <machine/regs.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
@@ -87,11 +88,20 @@ typedef enum {
         PROC_STATE_INVAL = -1,
 } sched_state_t;
 
+typedef enum {
+        PROC_CONTEXT_USER,              /* Running in userspace */
+        PROC_CONTEXT_KERN,              /* Running in kernel */
+        PROC_CONTEXT_INTR,              /* Running in an intrrupt */
+        PROC_CONTEXT_NONE,              /* Not running */
+        PROC_CONTEXT_INVAL = -1,
+} sched_context_t;
+
 typedef struct process_state {
         struct regs uregs;              /* Saved user-mode registers */
         struct regs regs;               /* Saved kernel-mode registers */
         void *kstack;                   /* The kernel stack base */
         sched_state_t sched_state;      /* process execution state */
+        sched_context_t sched_context;  /* process execution context */
 } proc_state_t;
 
 #define PROC_STATE_INIT ((proc_state_t) \
@@ -99,6 +109,7 @@ typedef struct process_state {
         .regs = { 0 },                  \
         .kstack = NULL,                 \
         .sched_state = PROC_STATE_NEW,  \
+        .sched_context = PROC_CONTEXT_NONE,  \
 })
 
 struct process;
@@ -117,6 +128,15 @@ typedef struct process_control {
         .pmm = NULL,                            \
 })
 
+typedef struct process_resources {
+        uint64_t rtime_us;              /* Real time executing */
+        unsigned long timeslice_start_us;    /* When the timeslice started */
+        uint64_t u_ticks;               /* Sched ticks in userspace */
+        uint64_t k_ticks;               /* kernelspace */
+        uint64_t i_ticks;               /* interrupt context */
+        uint64_t all_ticks;             /* sum of all ticks */
+} proc_res_t;
+
 /* The global process control block which contains:
  *  1) Process Identification data,
  *  2) Process State data,
@@ -126,6 +146,7 @@ typedef struct process {
         proc_id_t       id;             /* Identification */
         proc_state_t    state;          /* Execution state */
         proc_control_t  control;        /* Process contol data */
+        proc_res_t      resource;       /* Resource counters */
 } proc_t;
 
 #define PROC_INIT(p) ((proc_t)\
@@ -138,17 +159,23 @@ typedef struct process {
 extern proc_t **proc_table;
 extern pid_t    pid_max;
 
+/* The idle process */
+extern proc_t *idle_procp;
+
 /* The init process */
 extern proc_t *init_procp;
+
+/* Returns the current process who is executing. */
+#define proc_current()  PERCPU_CURPROC
+
+/* Sets the current process which is executing. */
+void proc_set_current(proc_t *);
 
 /* Initialize the proc subsystem. */
 void proc_system_init(void);
 /* Early initialization, before we have VMA. */
 void proc_system_early_init(void);
 __test void proc_test(void);
-
-/* Returns the current process who is executing. */
-proc_t *current_process(void);
 
 /* Sets the maximum number of PIDs the system can have. Only supports
  * increasing the pidmax. Returns 1 on failure (i.e. if out of memory)
@@ -162,19 +189,15 @@ extern mem_cache_t *proc_alloc_cache;
 proc_t *find_process(pid_t);
 
 /* A set of flags for a fork request. */
-typedef struct {
-        int             fr_flags;
-} fork_req_t;
+typedef int fork_req_t;
+
+#define FORK_FLAGS_COPYUSER     0b1
 
 /* Copy the given process with the given fork_req_t flags. */
-proc_t *copy_process(proc_t *, fork_req_t *);
+proc_t *copy_process(proc_t *, fork_req_t);
 
 /* Free the resources held by the given process. */
 void free_process(proc_t *);
-
-/* Switch the running process to nextp.
- * We save the register state into the PCB of current() at this point. */
-void switch_process(proc_t *nextp);
 
 /* Initializers and deinitializers for PCBs. */
 void proc_init(proc_t *);

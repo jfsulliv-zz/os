@@ -429,7 +429,7 @@ slab_getpages(size_t order, mflags_t flags)
                 return NULL;
         paddr_t phys = page_to_phys(page);
         vaddr_t vaddr = _va(phys);
-        if (pmm_map_range(current_process()->control.pmm, vaddr,
+        if (pmm_map_range(proc_current()->control.pmm, vaddr,
                           1<<order, phys, flags, PFLAGS_RW)) {
                 pfa_free_pages(page, order);
                 return NULL;
@@ -441,7 +441,7 @@ static void
 slab_freepages(void *p, size_t order)
 {
         paddr_t phys;
-        pmm_unmap_range(current_process()->control.pmm, (vaddr_t)p,
+        pmm_unmap_range(proc_current()->control.pmm, (vaddr_t)p,
                         1<<order, &phys);
         page_t *page = phys_to_page(phys);
         pfa_free_pages(page, order);
@@ -606,7 +606,7 @@ mem_cache_alloc(mem_cache_t *cp, mflags_t flags)
 {
         slab_buf_t *bp;
 
-        if (!cp || BAD_MFLAGS(flags))
+        if (!cp || BAD_MFLAGS_FOR_VMM(flags))
                 return NULL;
 
         /* First, see if we have a partial slab to use. */
@@ -788,7 +788,7 @@ kmalloc(unsigned long size, mflags_t flags)
         unsigned long ind, pf_ord;
         void *ret;
 
-        if (BAD_MFLAGS(flags) || size == 0)
+        if (BAD_MFLAGS_FOR_VMM(flags) || size == 0)
                 return NULL;
 
         ind = next_pow2(size);

@@ -29,28 +29,9 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MM_VMMAN_H_
-#define _MM_VMMAN_H_
+#ifndef _SYS_MUTEX_H_
+#define _SYS_MUTEX_H_
 
-/*
- * mm/vmman.h : VM Manager.
- *
- * James Sullivan <sullivan.james.f@gmail.com>
- * 04/16
- */
-
-#include <mm/paging.h>
-
-typedef struct {
-        pgdir_t *pgd;
-} vmman_t;
-
-int
-vmman_init(vmman_t *vmman);
-
-int
-copy_vmman(vmman_t *to, vmman_t *from);
-
-extern vmman_t proc0_vmman;
+#include <machine/mutex.h>
 
 #endif

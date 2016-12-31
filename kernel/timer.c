@@ -29,6 +29,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <sched/scheduler.h>
 #include <sys/timer.h>
 #include <sys/sysinit.h>
 #include <util/list.h>
@@ -115,6 +116,7 @@ bool timer_pending(timer_t *timer)
 void timer_pollevents(void)
 {
         unsigned long time = timer_get_usec();
+        sched_tick();
         LIST_HEAD(finished_timers);
         timer_t *timerp, *savep;
         timeslice_t *slice = timeslice_for_time(time);

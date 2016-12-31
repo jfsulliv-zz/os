@@ -34,9 +34,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sched/scheduler.h>
 #include <sched/sched_internal.h>
 #include <sys/kprintf.h>
-#include <sys/timer.h>
 #include <sys/panic.h>
 #include <sys/sysinit.h>
+#include <sys/timer.h>
 
 #include <stdint.h>
 
@@ -47,80 +47,173 @@ scheduler_t *scheduler = &round_robin_scheduler;
 #error No scheduler configured (CONF_SCHED_*)
 #endif
 
+#define SCHED_TICKRATE_DEFAULT 1
+static unsigned int tickrate = SCHED_TICKRATE_DEFAULT;
 
-/* The timer used to preempt processes. */
-static timer_t sched_timer;
+static void sched_accounting_tick(proc_t *);
+static void sched_accounting_switchout(proc_t *);
+static void sched_accounting_switchin(proc_t *);
 
-static const unsigned long DEFAULT_QUANTUM_MS = 100;
-
-static void sched_set_quantum(unsigned long quantum);
-static unsigned long sched_quantum(void);
-static unsigned long sched_next_tick(void);
-
-void sched_start(proc_t *initproc)
+void
+sched_start(proc_t *initproc)
 {
         bug_on(!initproc, "NULL initproc");
         scheduler->sched_start_impl(initproc);
-        timer_start(&sched_timer, sched_next_tick());
+        sched_accounting_switchin(initproc);
+        scheduler->ready = true;
 }
 
-void sched_fork(proc_t *parent, proc_t *child)
+void
+sched_tick(void)
+{
+        if (!scheduler->ready) {
+                return;
+        }
+        static unsigned int tick = 0;
+        proc_t *current = proc_current();
+        sched_accounting_tick(current);
+        if (tick++ > tickrate) {
+                proc_t *next = scheduler->sched_tick_impl();
+                if (next) {
+                        sched_switch(next, current);
+                }
+                tick = 0;
+        }
+}
+
+void
+sched_set_tickrate(unsigned int rate)
+{
+        bug_on(rate == 0, "Cannot set sched tickrate to 0");
+        kprintf(0, "Setting sched tickrate to %d\n", rate);
+        tickrate = rate;
+}
+
+unsigned int
+sched_tickrate(void)
+{
+        return tickrate;
+}
+
+void
+sched_atfork(proc_t *parent, proc_t *child)
 {
         bug_on(!parent || !child, "NULL process in fork");
         scheduler->sched_add_impl(child);
+        // TODO should we yield here, or at the caller?
 }
 
-void sched_exit(proc_t *proc)
+void __attribute__((noreturn))
+sched_atexit(proc_t *proc)
 {
         bug_on(!proc, "NULL proc in exit");
+        proc_t *next = scheduler->sched_yield_impl();
+        bug_on(!next, "Last process exiting.");
         scheduler->sched_rem_impl(proc);
+        sched_switch(next, NULL);
+        for (;;); /* Make the compiler happy */
 }
 
-void sched_yield(proc_t *proc)
+void
+sched_yield()
 {
-        bug_on(!proc, "NULL proc in yield");
-        scheduler->sched_yield_impl(proc);
+        proc_t *current = proc_current();
+        proc_t *next = scheduler->sched_yield_impl();
+        if (next) {
+                sched_switch(next, current);
+        }
 }
 
-proc_t *sched_next(void)
+void sched_at_kenter(proc_t *proc)
 {
-        return scheduler->sched_nextproc_impl();
+        bug_on(!proc, "NULL proc in kenter");
+        proc->state.sched_context = PROC_CONTEXT_KERN;
 }
 
-static unsigned long sched_tick(void)
+void sched_at_kexit(proc_t *proc)
 {
-        scheduler->sched_tick_impl();
-        return sched_next_tick();
+        bug_on(!proc, "NULL proc in kexit");
+        proc->state.sched_context = PROC_CONTEXT_USER;
 }
 
-static unsigned long quantum;
-
-static unsigned long sched_quantum(void)
+void
+sched_newproc(proc_t *proc)
 {
-        return quantum;
+        bug_on(!proc, "NULL proc added to runqueue");
+        scheduler->sched_add_impl(proc);
 }
 
-static void sched_set_quantum(unsigned long new)
+void
+sched_switch(proc_t *newproc, proc_t *oldproc)
 {
-        quantum = new;
+        bug_on(!newproc, "Switch to NULL process");
+        if (oldproc) {
+                sched_accounting_switchout(oldproc);
+        }
+
+        proc_set_current(newproc);
+
+        /* Swap out the address spaces. */
+        if (oldproc) {
+                pmm_deactivate(oldproc->control.pmm);
+        }
+        pmm_activate(newproc->control.pmm);
+
+        /* Perform an arch-dependent context switch. */
+        context_switch(oldproc ? &oldproc->state.regs : NULL,
+                       (const struct regs *)&newproc->state.regs);
+
+        sched_accounting_switchin(newproc);
 }
 
-static unsigned long sched_next_tick(void)
+static void
+sched_accounting_tick(proc_t *proc)
 {
-        return sched_quantum() * USEC_PER_MSEC;
+        switch (proc->state.sched_context)
+        {
+                case PROC_CONTEXT_USER:
+                        proc->resource.u_ticks++;
+                        break;
+                case PROC_CONTEXT_KERN:
+                        proc->resource.k_ticks++;
+                        break;
+                case PROC_CONTEXT_INTR:
+                        proc->resource.i_ticks++;
+                        break;
+                default:
+                        bug("Invalid sched context %d\n",
+                            proc->state.sched_context);
+        }
+        proc->resource.all_ticks++;
 }
 
-static int sched_init(void)
+static void
+sched_accounting_switchout(proc_t *proc)
+{
+        unsigned long time = timer_get_usec();
+        bug_on(proc->resource.timeslice_start_us > time,
+               "Non-monotonic runtime (%d > %d)\n",
+               proc->resource.timeslice_start_us, time);
+        proc->resource.rtime_us +=
+                time - proc->resource.timeslice_start_us;
+}
+
+static void
+sched_accounting_switchin(proc_t *proc)
+{
+        proc->resource.timeslice_start_us = timer_get_usec();
+}
+
+static int
+sched_init(void)
 {
         bug_on(!scheduler, "No scheduler configured.");
         int rval = 0;
         if (scheduler->sched_init_impl) {
                 rval = scheduler->sched_init_impl();
         }
-        sched_set_quantum(DEFAULT_QUANTUM_MS);
-        timer_init(&sched_timer, sched_tick);
-        kprintf(0, "sched: Initializing scheduler '%s' (quantum = %d)\n",
-                scheduler->name, sched_quantum());
+        kprintf(0, "sched: Initializing scheduler '%s'\n",
+                scheduler->name);
         return rval;
 }
 SYSINIT_STEP("scheduler", sched_init, SYSINIT_SCHED, 0);

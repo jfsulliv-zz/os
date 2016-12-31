@@ -42,6 +42,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #error No allocator specified (CONF_VMA_*).
 #endif
 
+/* Valid flags for the VMM allocation routines. M_HIGH is noticably
+ * absent, since the user-space should not be used for kernel objects. */
+#define MFLAGS_GOOD_MASK_FOR_VMM (M_WAIT | M_DMA | M_ZERO)
+#define BAD_MFLAGS_FOR_VMM(f) ((f) & ~MFLAGS_GOOD_MASK_FOR_VMM)
+
 /* Initialize the VMA subsystem. */
 void vma_init(void);
 
@@ -61,7 +66,7 @@ __test void vma_test(void);
 void *kmalloc (unsigned long size, mflags_t flags);
 /* Free the memory at the given address. Assumes that `addr' was
  * returned by kmalloc(); if it wasn't, bad things will happen. */
-void  kfree   (void *addr);
+void  kfree (void *addr);
 /* Adjust the allocation record for `addr' to the given size and flags.
  * Returns the new address (which is not necessarily the same as the
  * old address), or null on failure. */
@@ -99,7 +104,8 @@ mem_cache_t *mem_cache_create(const char *name, size_t size,
  * failure (e.g. if the cache is still in use). */
 int mem_cache_destroy(mem_cache_t *cp);
 
-/* Allocate an object from the given memory cache. */
+/* Allocate an object from the given memory cache.
+ * 'flags' should *not* have M_HIGH set. */
 void *mem_cache_alloc(mem_cache_t *cp, mflags_t flags);
 
 /* Free an object from the given memory cache. */

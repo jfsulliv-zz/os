@@ -29,10 +29,9 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_SYSCALL_H_
-#define _MACHINE_SYSCALL_H_
+#ifndef _ARCH_PERCPU_H_
+#define _ARCH_PERCPU_H_
 
-/* The entry point for SYSCALL/SYSRETURN (i686) or SYSENTER/SYSEXIT (i386) */
-extern void syscall_entry_stub(void);
+#define _ARCH_DEFINE_PERCPU(name, type) type name;
 
 #endif

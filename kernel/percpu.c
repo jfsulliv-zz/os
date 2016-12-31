@@ -29,10 +29,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_SYSCALL_H_
-#define _MACHINE_SYSCALL_H_
+#include <machine/percpu.h>
 
-/* The entry point for SYSCALL/SYSRETURN (i686) or SYSENTER/SYSEXIT (i386) */
-extern void syscall_entry_stub(void);
-
-#endif
+// TODO make this actually multiple CPUs
+uintptr_t dyn_percpu_offsets[1];
+percpu_t  percpu_structs[1];

@@ -224,7 +224,7 @@ pgd_map(pmm_t *pmm, pgd_t *pgd, vaddr_t va, paddr_t pa, mflags_t flags,
 }
 
 static int
-copy_pte(pte_t *dst, pte_t *src)
+copy_pte(pte_t *dst, const pte_t *src)
 {
         unsigned long i;
         for (i = 0; i < PTE_NUM; i++)
@@ -241,7 +241,7 @@ copy_pte(pte_t *dst, pte_t *src)
 #define copy_pmd(pmm, dst, src) copy_pte((pte_t *)dst, (pte_t *)src)
 #else
 static int
-copy_pmd(pmm_t *cur_pmm, pmd_t *dst, pmd_t *src)
+copy_pmd(pmm_t *cur_pmm, pmd_t *dst, const pmd_t *src)
 {
         unsigned long i, j;
         for (i = 0; i < PMD_NUM; i++)
@@ -276,7 +276,7 @@ free_tables:
 #define copy_pud(pmm, dst, src) copy_pmd(pmm, (pmd_t *)dst, (pmd_t *)src)
 #else
 static int
-copy_pud(pmm_t *cur_pmm, pud_t *dst, pud_t *src)
+copy_pud(pmm_t *cur_pmm, pud_t *dst, const pud_t *src)
 {
         unsigned long i, j;
         for (i = 0; i < PUD_NUM; i++)
@@ -309,10 +309,11 @@ free_tables:
 #endif
 
 static int
-copy_pgd(pmm_t *cur_pmm, pgd_t *dst, pgd_t *src)
+copy_pgd(pmm_t *cur_pmm, pgd_t *dst, const pgd_t *src, unsigned int base,
+         unsigned int top)
 {
-        unsigned long i, j;
-        for (i = 0; i < PGD_NUM; i++)
+        unsigned int i, j;
+        for (i = base; i < top; i++)
         {
                 void *v;
                 pud_t *dpud, *spud;
@@ -344,7 +345,7 @@ static void
 pmm_ctor(void *p, __attribute__((unused)) size_t sz)
 {
         pmm_t *pmm = (pmm_t *)p;
-        void *pgd = alloc_page(current_process()->control.pmm);
+        void *pgd = alloc_page(proc_current()->control.pmm);
         if (!pgd) {
                 /* We must check this later. */
                 pmm->pgdir = NULL;
@@ -359,7 +360,7 @@ static void
 pmm_dtor(void *p, __attribute__((unused)) size_t sz)
 {
         pmm_t *pmm = (pmm_t *)p;
-        free_pgd(current_process()->control.pmm, pmm->pgdir);
+        free_pgd(proc_current()->control.pmm, pmm->pgdir);
 }
 
 static void
@@ -482,14 +483,28 @@ pmm_create(void)
         return mem_cache_alloc(pmm_cache, M_KERNEL);
 }
 
-/* Copy the page table mappings from one pmm to another. */
+/* Copy the user page table mappings from one pmm to another. */
 int
-pmm_copy(pmm_t *dst, pmm_t *src)
+pmm_copy_user(pmm_t *dst, const pmm_t *src)
 {
         if (!dst || !src)
                 return 1;
-        return copy_pgd(current_process()->control.pmm, dst->pgdir,
-                        src->pgdir);
+        unsigned int base = 0;
+        unsigned int top = PGD_IND(_va(lowmem_start(src->lim)));
+        return copy_pgd(proc_current()->control.pmm, dst->pgdir,
+                        src->pgdir, base, top);
+}
+
+/* Copy the kernel page table mappings from one pmm to another. */
+int
+pmm_copy_kern(pmm_t *dst, const pmm_t *src)
+{
+        if (!dst || !src)
+                return 1;
+        unsigned int base = PGD_IND(_va(lowmem_start(src->lim)));;
+        unsigned int top = PGD_NUM;
+        return copy_pgd(proc_current()->control.pmm, dst->pgdir,
+                        src->pgdir, base, top);
 }
 
 /* Decrease the reference count to the physical map. When the refcount

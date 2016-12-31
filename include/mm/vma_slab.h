@@ -38,7 +38,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define CACHE_NAMELEN 255
 #define SLAB_MAX_OBJS 512 /* Max number of objects per slab. */
 
+// TODO Use me
 #define SLAB_CACHE_DMA_BIT      0
+// TODO Use me
 #define SLAB_CACHE_NOREAP_BIT   1
 #define SLAB_CACHE_SLABOFF_BIT  2
 

@@ -58,7 +58,7 @@ tss_install(void)
 {
         memset(&tss, 0, sizeof(struct tss_entry));
 
-        tss.ss0 = GDT_DATA_IND * sizeof(struct tss_entry);
+        tss.ss0 = GDT_KDATA_IND * sizeof(struct tss_entry);
         tss.rsp0 = (uint64_t)irq_stack;
 
         /* TODO tss_flush(GDT_TSS_IND); */

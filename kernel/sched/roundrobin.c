@@ -38,13 +38,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/timer.h>
 #include <util/list.h>
 
+#define RR_MAX_TICKS 10
+
 static void rr_start(proc_t *initproc);
 static void rr_initproc(proc_t *initproc);
 static void rr_add(proc_t *proc);
 static void rr_rem(proc_t *proc);
-static void rr_yield(proc_t *proc);
-static proc_t *rr_nextproc(void);
-static void rr_tick(void);
+static proc_t *rr_yield(void);
+static proc_t *rr_tick(void);
 
 scheduler_t round_robin_scheduler = {
         .sched_init_impl        = NULL,
@@ -53,38 +54,40 @@ scheduler_t round_robin_scheduler = {
         .sched_add_impl         = rr_add,
         .sched_rem_impl         = rr_rem,
         .sched_yield_impl       = rr_yield,
-        .sched_nextproc_impl    = rr_nextproc,
         .sched_tick_impl        = rr_tick,
         .name                   = "roundrobin"
 };
-
-static proc_t *curproc;
-static proc_t *lastproc;
 
 static void
 rr_start(proc_t *initproc)
 {
         rr_initproc(initproc);
-        curproc = lastproc = initproc;
+        initproc->control.schedinfo.nextp =
+                initproc->control.schedinfo.prevp =
+                initproc;
         rr_add(initproc);
 }
 
 static void
 rr_initproc(proc_t *proc)
 {
-        proc->control.schedinfo.nextp = NULL;
-        proc->control.schedinfo.prevp = NULL;
         proc->control.schedinfo.run_time = 0;
+        proc->state.sched_state = PROC_STATE_READY;
+        proc->state.sched_context = PROC_CONTEXT_KERN;
 }
 
 static void
 rr_add(proc_t *proc)
 {
-        lastproc->control.schedinfo.nextp = proc;
-        proc->control.schedinfo.prevp = lastproc;
+        rr_initproc(proc);
+        proc_t *current = proc_current();
+        proc_t *prev = current->control.schedinfo.prevp;
 
-        curproc->control.schedinfo.prevp = proc;
-        proc->control.schedinfo.nextp = curproc;
+        prev->control.schedinfo.nextp = proc;
+        current->control.schedinfo.prevp = proc;
+
+        proc->control.schedinfo.nextp = current;
+        proc->control.schedinfo.prevp = prev;
 }
 
 static void
@@ -98,26 +101,34 @@ rr_rem(proc_t *proc)
                 = proc->control.schedinfo.nextp;
 }
 
-static void
-rr_yield(proc_t *proc)
+static proc_t *
+rr_yield(void)
 {
-        // Yielding is nonsensical when yielding to oneself.
-        if (proc->control.schedinfo.nextp != proc) {
-                rr_rem(proc);
-                rr_add(proc);
-        }
+        proc_t *current = proc_current();
+        proc_t *next = current->control.schedinfo.nextp;
+        proc_set_current(next);
+        return current->id.pid != next->id.pid ? next : NULL;
+}
+
+static bool
+rr_time_expired(proc_t *current)
+{
+        return current->resource.all_ticks > RR_MAX_TICKS;
 }
 
 static proc_t *
-rr_nextproc(void)
-{
-        return curproc;
-}
-
-static void
 rr_tick(void)
 {
-        proc_t *next = curproc;
-        lastproc = curproc;
-        curproc = next->control.schedinfo.nextp;
+        proc_t *current = proc_current();
+        proc_t *next = NULL;
+
+        if (rr_time_expired(current)) {
+                if (current->state.sched_context == PROC_CONTEXT_USER) {
+                        next = current->control.schedinfo.nextp;
+                        if (next->id.pid == current->id.pid) {
+                                next = NULL;
+                        }
+                }
+        }
+        return next;
 }

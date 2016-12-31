@@ -41,6 +41,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * should take place.
  */
 typedef struct scheduler {
+        /* Whether the scheduler is ready to be used. */
+        bool ready;
         /* Perform scheduler-specific setup necessary before use. */
         int  (*sched_init_impl)(void);
         /* Starts the scheduler by placing initproc into its run queue. */
@@ -51,13 +53,15 @@ typedef struct scheduler {
         void (*sched_add_impl)(proc_t *proc);
         /* Remove the given process from the run queue. */
         void (*sched_rem_impl)(proc_t *proc);
-        /* Yields the slice for the given process. */
-        void (*sched_yield_impl)(proc_t *proc);
-        /* Returns the next process to schedule. */
-        proc_t *(*sched_nextproc_impl)(void);
+        /* Yields the slice for the current process, returning the next
+         * process to schedule (or NULL if no switch should be done). */
+        /* The caller is responsible for actually doing the context
+         * switch. */
+        proc_t *(*sched_yield_impl)(void);
         /* Called when the scheduler timer expires, on a regular 
-         * interval. */
-        void (*sched_tick_impl)(void);
+         * interval.
+         * If a context switch should be done, returns the next proc. */
+        proc_t *(*sched_tick_impl)(void);
         const char name[32];
 } scheduler_t;
 extern scheduler_t *scheduler;

@@ -113,3 +113,9 @@ set_stack(struct regs *regs, reg_t stack, unsigned long stack_size)
         regs->esp = stack + stack_size - 4;
         regs->ebp = 0;
 }
+
+void
+set_entrypoint(struct regs *regs, reg_t entry)
+{
+        regs->eip = entry;
+}

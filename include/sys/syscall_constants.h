@@ -39,9 +39,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define SYS_MAXARGS 6
 
 typedef struct {
-        void *fun;
-        size_t num_args;
         const char *const name;
+        size_t num_args;
+        void *fun;
 } sysent_t;
 
 extern const sysent_t syscalls[];

@@ -29,10 +29,9 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_SYSCALL_H_
-#define _MACHINE_SYSCALL_H_
+#ifndef _SYS_CPUTIME_H_
+#define _SYS_CPUTIME_H_
 
-/* The entry point for SYSCALL/SYSRETURN (i686) or SYSENTER/SYSEXIT (i386) */
-extern void syscall_entry_stub(void);
+typedef unsigned long cputime_t;
 
 #endif

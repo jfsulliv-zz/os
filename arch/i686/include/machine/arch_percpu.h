@@ -29,10 +29,21 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_SYSCALL_H_
-#define _MACHINE_SYSCALL_H_
+#ifndef _MACHINE_ARCH_PERCPU_H_
+#define _MACHINE_ARCH_PERCPU_H_
 
-/* The entry point for SYSCALL/SYSRETURN (i686) or SYSENTER/SYSEXIT (i386) */
-extern void syscall_entry_stub(void);
+/*
+ * machine/arch_percpu.h - Per CPU data for the i686
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 12/16
+ */
+
+#include <machine/gdt.h>
+
+#define _ARCH_PERCPU_FIELDS /* Empty */
+
+/* TODO */
+#define _ARCH_CURCPU 0
 
 #endif

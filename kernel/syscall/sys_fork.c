@@ -29,15 +29,17 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <sched/scheduler.h>
 #include <sys/proc.h>
 #include <sys/syscalls.h>
 
 pid_t
 sys_fork(void)
 {
-        proc_t *me = current_process();
+        proc_t *me = proc_current();
         proc_t *child = copy_process(me, NULL);
         if (!child)
                 return -1;
+        sched_atfork(me, child);
         return child->id.pid;
 }

@@ -29,24 +29,25 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <machine/percpu.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
 #include <sched/scheduler.h>
 #include <sys/kprintf.h>
-#include <sys/string.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
+#include <sys/string.h>
+#include <sys/timer.h>
 
+static proc_t idle_proc;
 static proc_t init_proc;
+proc_t *idle_procp;
 proc_t *init_procp;
 
 proc_t **proc_table;
 pid_t    pid_max = 65535; /* Default value */
 
 mem_cache_t *proc_alloc_cache;
-
-/* TODO once we go SMP-aware this needs to be per-cpu */
-static proc_t *current;
 
 void
 proc_ctor(void *p, __attribute__((unused)) size_t sz)
@@ -82,17 +83,12 @@ set_pidmax(pid_t p)
         return 0;
 }
 
-proc_t *
-current_process(void)
-{
-        return current;
-}
-
-static void
-set_current(proc_t *new)
+void
+proc_set_current(proc_t *new)
 {
         bug_on(!new, "Assigning NULL current");
-        current = new;
+        percpu_t *percpu = PERCPU_STRUCT;
+        percpu->current = new;
 }
 
 static void
@@ -107,7 +103,7 @@ assign_pid(proc_t *proc, pid_t pid)
 static pid_t
 next_pid(void)
 {
-        static pid_t last_pid = 1;
+        static pid_t last_pid = 0;
         pid_t ret;
         for (ret = last_pid+1; ret != last_pid; ret++)
         {
@@ -121,6 +117,29 @@ next_pid(void)
         return 0; /* Out of PIDs */
 }
 
+static int
+make_child(proc_t *par, proc_t *p, fork_req_t req)
+{
+        p->id.ppid = par->id.pid;
+        list_add(&par->control.children, &p->control.pr_list);
+        if (pmm_copy_kern(p->control.pmm,
+                          (const pmm_t *)par->control.pmm)) {
+                kprintf(0, "Failed to copy kernel page tables\n");
+                return 1;
+        }
+        if (req & FORK_FLAGS_COPYUSER) {
+                memcpy(&p->state.uregs, &par->state.uregs,
+                       sizeof(struct regs));
+                if (pmm_copy_user(p->control.pmm,
+                                  (const pmm_t *)par->control.pmm)) {
+                        kprintf(0, "Failed to copy user page tables\n");
+                        return 1;
+                }
+        }
+        return 0;
+}
+
+
 static void
 proc_system_init_table(void)
 {
@@ -130,14 +149,27 @@ proc_system_init_table(void)
 }
 
 static void
+proc_system_init_idleproc(void)
+{
+        idle_proc = PROC_INIT(idle_proc);
+        idle_proc.id.pid = 0;
+        idle_proc.id.ppid = 0;
+        idle_proc.control.pmm = &init_pmm;
+        proc_set_current(&idle_proc);
+        idle_procp = &idle_proc;
+}
+
+static void
 proc_system_init_initproc(void)
 {
-        init_proc = PROC_INIT(init_proc);
-        init_proc.id.pid = 1;
-        init_proc.id.ppid = 0;
-        init_proc.control.pmm = &init_pmm;
-        set_current(&init_proc);
         init_procp = &init_proc;
+
+        proc_init(init_procp);
+        assign_pid(init_procp, 1);
+        bug_on(make_child(idle_procp, init_procp, 0) != 0,
+               "Failed to initialize init process");
+
+        // TODO initialize with userspace program
 }
 
 static void
@@ -152,7 +184,7 @@ proc_system_init_alloc(void)
 void
 proc_system_early_init(void)
 {
-        proc_system_init_initproc();
+        proc_system_init_idleproc();
 }
 
 void
@@ -160,7 +192,9 @@ proc_system_init(void)
 {
         proc_system_init_alloc();
         proc_system_init_table();
-        assign_pid(&init_proc, 1);
+        assign_pid(&idle_proc, 0);
+
+        proc_system_init_initproc();
 }
 
 static proc_t *
@@ -192,17 +226,8 @@ find_process(pid_t pid)
         return proc_table[pid];
 }
 
-static int
-_make_child(proc_t *par, proc_t *p)
-{
-        p->id.ppid = par->id.pid;
-        list_add(&par->control.children, &p->control.pr_list);
-        memcpy(&p->state.regs, &par->state.regs, sizeof(struct regs));
-        return pmm_copy(p->control.pmm, par->control.pmm);
-}
-
 proc_t *
-copy_process(proc_t *par, fork_req_t *req)
+copy_process(proc_t *par, fork_req_t req)
 {
         if (!par)
                 return NULL;
@@ -211,12 +236,10 @@ copy_process(proc_t *par, fork_req_t *req)
         if (!p) {
                 kprintf(0, "Failed to allocate process\n");
                 return NULL;
-        }
-        if (_make_child(par, p)) {
+        } else if (make_child(par, p, req)) {
                 free_process(p);
-                return NULL;
+                p = NULL;
         }
-        sched_fork(par, p);
         return p;
 }
 
@@ -231,37 +254,13 @@ free_process(proc_t *p)
 }
 
 void
-switch_process(proc_t *nextp)
-{
-        bug_on(!nextp, "Switching to invalid PCB");
-
-        proc_t *p = current_process();
-
-        set_current(nextp);
-        kprintf(0, "Switched current\n");
-
-        /* Swap out the address spaces. */
-        pmm_deactivate(p->control.pmm);
-        pmm_activate(nextp->control.pmm);
-        kprintf(0, "Running a new PMM\n");
-
-        /* Perform an arch-dependent context switch. */
-        context_switch(&p->state.regs,
-                       (const struct regs *)&nextp->state.regs);
-        kprintf(0, "Switched contexts!\n");
-
-        /* Cool, we're a new process! The old one is 'paused' inside
-         * context_switch(), where we saved its state. */
-}
-
-void
 proc_init(proc_t *p)
 {
         if (!p)
                 return;
-        p->id      = PROC_ID_INIT;
+        p->id = PROC_ID_INIT;
         assign_pid(p, next_pid());
-        p->state   = PROC_STATE_INIT;
+        p->state = PROC_STATE_INIT;
         p->control = PROC_CONTROL_INIT(p->control);
         p->control.pmm = pmm_create();
         p->state.kstack = kmalloc(PAGE_SIZE * 4, M_KERNEL | M_ZERO);
@@ -282,11 +281,11 @@ __test void
 proc_test(void)
 {
         proc_t *p1, *p2;
-        p1 = current_process();
+        p1 = proc_current();
         bug_on(p1->id.pid != 1, "Current is not pid 1\n");
         p2 = find_process(1);
         bug_on(p1 != p2, "find_process misidentified pid 1\n");
-        p2 = copy_process(p1, NULL);
+        p2 = copy_process(p1, 0);
         bug_on(!p2, "copy_process failed\n");
         p2->state.sched_state = PROC_STATE_TERMINATED;
         free_process(p2);

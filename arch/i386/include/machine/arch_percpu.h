@@ -29,26 +29,21 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <mm/paging.h>
-#include <mm/vmman.h>
-#include <sys/errno.h>
-#include <sys/panic.h>
+#ifndef _MACHINE_ARCH_PERCPU_H_
+#define _MACHINE_ARCH_PERCPU_H_
 
-vmman_t proc0_vmman;
+/*
+ * machine/arch_percpu.h - Per CPU data for the i386
+ *
+ * James Sullivan <sullivan.james.f@gmail.com>
+ * 12/16
+ */
 
-int
-vmman_init(vmman_t *vmman)
-{
-        if (!vmman)
-                return EINVAL;
-        vmman->pgd = alloc_pgdir();
-        return (vmman->pgd == NULL ? ENOMEM : 0);
-}
+#include <machine/gdt.h>
 
-int
-copy_vmman(vmman_t *to, vmman_t *from)
-{
-        if (!to || !from)
-                return EINVAL;
-        return copy_pgdir(to->pgd, from->pgd);
-}
+#define _ARCH_PERCPU_FIELDS /* Empty */
+
+/* TODO */
+#define _ARCH_CURCPU 0
+
+#endif

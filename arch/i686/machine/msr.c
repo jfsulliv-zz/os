@@ -31,6 +31,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <machine/msr.h>
 #include <machine/gdt.h>
+#include <machine/syscall.h>
 
 void
 init_msrs(void)
@@ -42,5 +43,5 @@ init_msrs(void)
         /* Long mode syscall entry point */
         wrmsrl(MSR_LSTAR, (uint64_t)syscall_entry_stub);
         /* Compat mode syscall entry point */
-        wrmsrl(MSR_CSTAR, (uint64_t)syscall_compat_entry_stub);
+        // TODO wrmsrl(MSR_CSTAR, (uint64_t)syscall_compat_entry_stub);
 }

@@ -36,13 +36,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/types.h>
 #include <stdint.h>
 
-__attribute__((noreturn)) void jump_to_userspace(void *addr,
-                                                 void *stack_top);
+__attribute__((noreturn)) void jump_to_userspace(const void *addr,
+                                                 const void *stack_top);
 void context_switch(struct regs *saveregs, const struct regs *newregs);
 void dump_regs_from(const struct regs *r);
 void dump_regs(void);
 void get_regs(struct regs *to);
 void backtrace(unsigned int max);
 void set_stack(struct regs *regs, reg_t stack, unsigned long stack_size);
+void set_entrypoint(struct regs *regs, reg_t entry);
 
 #endif

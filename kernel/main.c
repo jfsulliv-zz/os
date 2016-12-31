@@ -90,6 +90,8 @@ print_banner(void)
 }
 SYSINIT_STEP("print_banner", print_banner, SYSINIT_LATE, 0);
 
+static void idle_loop(void);
+
 int
 main(multiboot_info_t *mbd)
 {
@@ -143,7 +145,10 @@ main(multiboot_info_t *mbd)
 
         /* Get the interrupt handlers and timers ready. */
         arch_init_irqs();
+        /* 1ms timer granularity */
         timer_set_pollinterval(1 * USEC_PER_MSEC);
+        /* 100ms scheduler granularity */
+        sched_set_tickrate(100);
 
         /* Run the rest of the system setup. This should be the last
          * thing done before we enable interrupts and start the init
@@ -153,15 +158,33 @@ main(multiboot_info_t *mbd)
         enable_interrupts();
         kprintf(0, "Enabled interrupts\n");
 
-        /* Now that interrupts are enabled, we start the scheduler
-         * and drop into the first process. */
-        sched_start(init_procp);
+        /* Start the scheduler.
+         * 1) Init the scheduler run-queue with the current thread (the
+         *    idle process)
+         * 2) Enqueue the init process
+         * 3) Yield so that the init process gets to run */
+        sched_start(idle_procp);
+        // TODO should this take in the initial context (user/kern)
+        // as a parameter?
+        // TODO enable this once initproc is properly set up
+        // - Load userspace program
+        // - Set up initial regs for userspace
+        // - Set sched context appropriately
+        //sched_newproc(init_procp);
+        //sched_yield();
 
+        idle_loop();
+}
+
+static void
+idle_loop(void)
+{
         kprintf(0, "Idling!\n");
         while (1)
         {
+                // TODO power efficient idle
                 timer_wait_ms(1000);
-                kprintf(0, "x");
+                //sched_yield();
         }
         for (;;);
 }

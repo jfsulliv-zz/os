@@ -42,22 +42,49 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/config.h>
 #include <sys/proc.h>
 
+/* Scheduler control routines. */
+
 /* Called to start scheduling init. */
 void sched_start(proc_t *initproc);
+
+/* Called every timer tick. */
+void sched_tick(void);
+
+/* Sets the number of timer ticks per scheduler tick. */
+void sched_set_tickrate(unsigned int rate);
+
+/* Returns the number of timer ticks per scheduler tick. */
+unsigned int sched_tickrate(void);
+
+/* Adds the given process to the runqueue. */
+void sched_newproc(proc_t *);
+
+/* Returns true if the process should be preempted and false otherwise. */
+bool sched_shouldswitch(proc_t *proc);
+
+/* Switch processes. Save the register state into 'oldproc' if it is
+ * non-NULL. */
+void sched_switch(proc_t *newproc, proc_t *oldproc);
+
 
 /* Scheduler hooks for processes. */
 
 /* Register child into the scheduler's run queue, ensuring that child
  * will run before parent. */
-void sched_fork(proc_t *parent, proc_t *child);
+void sched_atfork(proc_t *parent, proc_t *child);
 
 /* Remove the process from the run queue. */
-void sched_exit(proc_t *);
+void __attribute__((noreturn)) sched_atexit(proc_t *);
 
-/* Yield the CPU for the given process. */
-void sched_yield(proc_t *);
+/* Yield the CPU for the current process. */
+void sched_yield();
 
-/* Returns the next process to be scheduled. */
-proc_t *sched_next(void);
+/* Call when the given process is about to enter kernel space.
+ * Updates the scheduler's state accordingly. */
+void sched_at_kenter(proc_t *);
+
+/* Call when the given process is about to exit kernel space.
+ * Updates the scheduler's state accordingly. */
+void sched_at_kexit(proc_t *);
 
 #endif

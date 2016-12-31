@@ -66,13 +66,16 @@
 
 ; Swap register contexts.
 ; esp+8  : struct regs *saveregs
-; esp+12 : struct regs *newregs
+; esp+12 : const struct regs *newregs
 global context_switch
 context_switch:
         push ebp
         mov ebp, esp
         mov eax, [ebp+8]
+        or eax, eax
+        jz .skip_save
         SAVE_REGS eax
+.skip_save:
         ; Things are kind of weird here. we're technically still the old
         ; process but our register context is the new one's. Since the
         ; IP is the same for both, we've functionally performed a full
@@ -84,8 +87,8 @@ context_switch:
         ret
 
 ; Jump to userspace, dropping into ring 3. Does not return!
-; esp+8  : void *call_addr
-; esp+12 : void *user_stack_top 
+; esp+8  : const void *call_addr
+; esp+12 : const void *user_stack_top 
 global jump_to_userspace
 jump_to_userspace:
         push dword 3 | (0x8 * 4) ; User SS
