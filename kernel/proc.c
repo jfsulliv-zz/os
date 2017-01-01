@@ -282,9 +282,9 @@ proc_test(void)
 {
         proc_t *p1, *p2;
         p1 = proc_current();
-        bug_on(p1->id.pid != 1, "Current is not pid 1\n");
-        p2 = find_process(1);
-        bug_on(p1 != p2, "find_process misidentified pid 1\n");
+        bug_on(p1->id.pid != 0, "Current is not pid 0\n");
+        p2 = find_process(0);
+        bug_on(p1 != p2, "find_process misidentified pid 0\n");
         p2 = copy_process(p1, 0);
         bug_on(!p2, "copy_process failed\n");
         p2->state.sched_state = PROC_STATE_TERMINATED;
