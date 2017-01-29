@@ -49,7 +49,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define M_BUFFER   (         M_WAIT)
 #define M_ATOMIC   (0)
-#define M_USER     (M_HIGH | M_WAIT)
+#define M_USER     (M_HIGH | M_WAIT | M_ZERO)
 #define M_KERNEL   (         M_WAIT)
 
 typedef uint32_t mflags_t;
