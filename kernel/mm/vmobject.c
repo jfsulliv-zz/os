@@ -29,40 +29,53 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MM_PAGING_H_
-#define _MM_PAGING_H_
+#include <mm/vma.h>
+#include <mm/vmobject.h>
+#include <mm/paging.h>
+#include <sys/panic.h>
+#include <sys/sysinit.h>
 
-/*
- * mm/paging.h
- *
- * James Sullivan <sullivan.james.f@gmail.com>
- * 04/16
- */
+static mem_cache_t *vmobject_cache;
 
-#include <stddef.h>
-#include <machine/types.h>
-#include <mm/arch_paging.h>
-#include <mm/page_table.h>
-#include <util/list.h>
+static void vmobject_ctor(void *p, __attribute__((unused))size_t sz)
+{
+        vmobject_t *obj = (vmobject_t *)p;
 
-// Returns X rounded down to the previous page-aligned value.
-#define PAGE_ROUND(X) ((X) & ~(PAGE_SIZE - 1))
+        obj->refct = 0;
+        obj->size = 0;
+        obj->page = NULL;
+}
 
-// Returns X rounded up to the next page-aligned value.
-#define PAGE_ROUNDUP(X) \
-        ((X) & (PAGE_SIZE - 1) \
-                ? ((X) & ~(PAGE_SIZE - 1)) \
-                : (X))
+vmobject_t *
+vmobject_create_anon(size_t sz, pflags_t flags)
+{
+        if (sz == 0 || BAD_PFLAGS(flags))
+                return NULL;
+        vmobject_t *obj = mem_cache_alloc(vmobject_cache, M_KERNEL);
+        if (!obj)
+                return NULL;
+        obj->size = PAGE_ROUNDUP(sz);
+        obj->pflags = flags;
+        return obj;
 
-/* Metadata associated with a memory page.
- * Note that the physical address of the page can be derived by the PFA 
- * system, but is not stored. The virtual address that the page is
- * mapped to is stored and is updated by the PMM system. */
-typedef struct page {
-        vaddr_t vaddr;
-        unsigned long order; // Used by the PFA internally.
-        struct list_head list; // Used by the PFA internally.
-        struct page *next; // Next page; see mm/vmobject.h
-} page_t;
+}
 
-#endif /* _MM_PAGING_H_ */
+void
+vmobject_destroy(vmobject_t *object)
+{
+        bug_on(!object, "Destoying NULL object");
+        bug_on(object->refct > 0, "Destroying referenced object");
+}
+
+static int
+vmobject_init(void)
+{
+        vmobject_cache =
+                mem_cache_create("vmobject_cache", sizeof(vmobject_t),
+                                 sizeof(vmobject_t), 0,
+                                 vmobject_ctor, NULL);
+
+        bug_on(!vmobject_cache, "Failed to allocate vmobject cache");
+        return 0;
+}
+SYSINIT_STEP("vmobject", vmobject_init, SYSINIT_VMOBJ, 0);

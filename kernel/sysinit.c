@@ -119,7 +119,7 @@ build_reverse_dependencies(init_module_t *modules, size_t num)
         {
                 init_module_t *module = modules + i;
                 if (!module->first_step) {
-                        kprintf(0, "sysinit: Module %d has no steps.\n", i);
+                        kprintf(0, "[-] Module %d has no steps.\n", i);
                         bug("Empty modules are disallowed.\nRemove the "
                             "module or add an init step.");
                 }
@@ -186,7 +186,7 @@ sort_init_modules(init_module_t *modules, size_t num)
         {
                 init_module_t *module = copy_modules + i;
                 if (module->dep_mask) {
-                        kprintf(0, "sysinit: Cycle detected! Aborting.\n");
+                        kprintf(0, "[-] Cycle detected! Aborting.\n");
                         kprintf(0, "Step %d mask 0x%lx\n", i,
                                 module->dep_mask);
                         panic("Unsatisfiable sysinit configuration.");
@@ -214,14 +214,14 @@ execute_init_modules(init_module_t *modules, size_t num)
                 {
                         int status = step->step();
                         if (status) {
-                                kprintf(0, "sysinit: failed to initialize"
-                                        " %s\n", step->name);
+                                kprintf(0, "[-] failed to initialize %s\n",
+                                        step->name);
                                 if (!step->warn_on_fail) {
-                                        panic("Critical step failed.");
+                                        panic("Initialization failed!");
                                 }
                                 num_failures++;
                         } else if (i != 0 && i != SYSINIT_NUM_MODULES-1) {
-                                kprintf(0, "sysinit: Initialized %s\n",
+                                kprintf(0, "[+] %s ready\n",
                                         step->name);
                         }
                         step = step->_nextptr;

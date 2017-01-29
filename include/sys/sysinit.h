@@ -38,15 +38,17 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 /* Initialization modules. A given initialization step can be in exactly
  * one module and can depend on any other modules (assuming no cyclic
- * dependencies arise).
+ * dependencies arise; these will be detected at runtime).
  *
  * Order is not important here, as long as SYSINIT_EARLY is at index 0
  * and SYSINIT_LATE is at index SYSINIT_NUM_MODULES - 1.
  * */
 #define SYSINIT_EARLY   (1 << 0)
 #define SYSINIT_SCHED   (1 << 1)
-#define SYSINIT_LATE    (1 << 2)
-#define SYSINIT_NUM_MODULES 3
+#define SYSINIT_VMOBJ   (1 << 2)
+#define SYSINIT_VMAP    (1 << 3)
+#define SYSINIT_LATE    (1 << 4)
+#define SYSINIT_NUM_MODULES 5
 
 /* A single initialization step.
  *

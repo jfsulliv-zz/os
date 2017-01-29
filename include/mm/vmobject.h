@@ -29,40 +29,41 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MM_PAGING_H_
-#define _MM_PAGING_H_
+#ifndef _MM_VMOBJECT_H_
+#define _MM_VMOBJECT_H_
 
 /*
- * mm/paging.h
+ * mm/vmobject.h - Objects in a process address space.
+ *
+ * A vmobject_t is an abstraction of something that can be mapped into a
+ * process address space. This is often backed by a file but can also be
+ * an 'anonymous' region with no backing file.
+ *
+ * These objects can be shared between processes and are
+ * reference-counted; once the last reference to an object is dropped,
+ * the object may free its associated memory. These reference counts are
+ * managed by VM regions (defined in mm/vmmap.h).
  *
  * James Sullivan <sullivan.james.f@gmail.com>
- * 04/16
+ * 01/17
  */
 
+#include <mm/pflags.h>
 #include <stddef.h>
-#include <machine/types.h>
-#include <mm/arch_paging.h>
-#include <mm/page_table.h>
-#include <util/list.h>
+#include <stdint.h>
 
-// Returns X rounded down to the previous page-aligned value.
-#define PAGE_ROUND(X) ((X) & ~(PAGE_SIZE - 1))
+typedef struct {
+        int refct;              /* Number of references to the object */
+        size_t size;            /* Size, in bytes, of the object */
+        pflags_t pflags;        /* Protection flags for the object */
+        // TODO inode for non-anon
+        // TODO pager (swap for anon, filesystem for non-anon)
+        struct page *page;      /* Linked-list of owned pages */
+} vmobject_t;
 
-// Returns X rounded up to the next page-aligned value.
-#define PAGE_ROUNDUP(X) \
-        ((X) & (PAGE_SIZE - 1) \
-                ? ((X) & ~(PAGE_SIZE - 1)) \
-                : (X))
+// Creates an object representing an anonymous region of size 'size'.
+// 'size' will be page-aligned (rounding up).
+vmobject_t *vmobject_create_anon(size_t size, pflags_t flags);
+void vmobject_destroy(vmobject_t *);
 
-/* Metadata associated with a memory page.
- * Note that the physical address of the page can be derived by the PFA 
- * system, but is not stored. The virtual address that the page is
- * mapped to is stored and is updated by the PMM system. */
-typedef struct page {
-        vaddr_t vaddr;
-        unsigned long order; // Used by the PFA internally.
-        struct list_head list; // Used by the PFA internally.
-        struct page *next; // Next page; see mm/vmobject.h
-} page_t;
-
-#endif /* _MM_PAGING_H_ */
+#endif

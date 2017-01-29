@@ -434,6 +434,9 @@ slab_getpages(size_t order, mflags_t flags)
                 pfa_free_pages(page, order);
                 return NULL;
         }
+        if (flags & M_ZERO) {
+                memset((void *)vaddr, 0, 1<<order);
+        }
         return (void *)vaddr;
 }
 

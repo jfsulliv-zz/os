@@ -43,6 +43,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/regs.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
+#include <mm/vmmap.h>
 #include <sched/schedinfo.h>
 #include <sys/debug.h>
 #include <util/list.h>
@@ -102,6 +103,7 @@ typedef struct process_state {
         void *kstack;                   /* The kernel stack base */
         sched_state_t sched_state;      /* process execution state */
         sched_context_t sched_context;  /* process execution context */
+        vmmap_t vmmap;                  /* Virtual memory map */
 } proc_state_t;
 
 #define PROC_STATE_INIT ((proc_state_t) \
@@ -130,7 +132,7 @@ typedef struct process_control {
 
 typedef struct process_resources {
         uint64_t rtime_us;              /* Real time executing */
-        unsigned long timeslice_start_us;    /* When the timeslice started */
+        unsigned long timeslice_start_us;    /* Start of timeslice */
         uint64_t u_ticks;               /* Sched ticks in userspace */
         uint64_t k_ticks;               /* kernelspace */
         uint64_t i_ticks;               /* interrupt context */
@@ -198,9 +200,5 @@ proc_t *copy_process(proc_t *, fork_req_t);
 
 /* Free the resources held by the given process. */
 void free_process(proc_t *);
-
-/* Initializers and deinitializers for PCBs. */
-void proc_init(proc_t *);
-void proc_deinit(proc_t *);
 
 #endif

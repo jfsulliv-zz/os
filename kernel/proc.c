@@ -49,24 +49,6 @@ pid_t    pid_max = 65535; /* Default value */
 
 mem_cache_t *proc_alloc_cache;
 
-void
-proc_ctor(void *p, __attribute__((unused)) size_t sz)
-{
-        proc_t *proc = (proc_t *)p;
-        if (!p)
-                return;
-        bzero(proc, sizeof(proc_t));
-}
-
-void
-proc_dtor(void *p, __attribute__((unused)) size_t sz)
-{
-        proc_t *proc = (proc_t *)p;
-        if (!p)
-                return;
-        proc_deinit(proc);
-}
-
 int
 set_pidmax(pid_t p)
 {
@@ -98,6 +80,12 @@ assign_pid(proc_t *proc, pid_t pid)
         proc_table[pid] = proc;
         if (proc)
                 proc->id.pid = pid;
+}
+
+static void
+unassign_pid(pid_t pid)
+{
+        proc_table[pid] = NULL;
 }
 
 static pid_t
@@ -148,15 +136,66 @@ proc_system_init_table(void)
         memset(proc_table, 0, (1 + pid_max) * (sizeof(void *)));
 }
 
+static int
+proc_init(proc_t *p)
+{
+        if (!p)
+                return 0;
+        p->id = PROC_ID_INIT;
+        assign_pid(p, next_pid());
+        p->state = PROC_STATE_INIT;
+        p->control = PROC_CONTROL_INIT(p->control);
+        p->control.pmm = pmm_create();
+        if (!p->control.pmm)
+               goto cleanup_pid;
+        p->state.kstack = kmalloc(PAGE_SIZE * 4, M_KERNEL);
+        if (!p->state.kstack)
+                goto cleanup_pmm;
+        set_stack(&p->state.regs, (reg_t)p->state.kstack, PAGE_SIZE * 4);
+        vmmap_init(&p->state.vmmap, p->control.pmm);
+        return 0;
+
+cleanup_pid:
+        assign_pid(NULL, p->id.pid);
+        p->id.pid = 0;
+cleanup_pmm:
+        pmm_destroy(p->control.pmm);
+        p->control.pmm = NULL;
+        return 1;
+}
+
+static void
+proc_deinit(proc_t *p)
+{
+        if (!p)
+                return;
+        if (p->id.pid > 0)
+                assign_pid(NULL, p->id.pid);
+        if (p->control.pmm)
+                pmm_destroy(p->control.pmm);
+        if (p->state.kstack)
+                kfree(p->state.kstack);
+        vmmap_deinit(&p->state.vmmap);
+}
+
+static void
+proc_dtor(void *p, __attribute__((unused)) size_t sz)
+{
+        proc_t *proc = (proc_t *)p;
+        if (!p)
+                return;
+        proc_deinit(proc);
+}
+
 static void
 proc_system_init_idleproc(void)
 {
+        idle_procp = &idle_proc;
         idle_proc = PROC_INIT(idle_proc);
         idle_proc.id.pid = 0;
         idle_proc.id.ppid = 0;
         idle_proc.control.pmm = &init_pmm;
-        proc_set_current(&idle_proc);
-        idle_procp = &idle_proc;
+        proc_set_current(idle_procp);
 }
 
 static void
@@ -164,7 +203,9 @@ proc_system_init_initproc(void)
 {
         init_procp = &init_proc;
 
-        proc_init(init_procp);
+        bug_on(proc_init(init_procp), "Failed to initialize init process");
+        // Make sure we get pid 1 instead of what proc_init gives us
+        assign_pid(NULL, init_procp->id.pid);
         assign_pid(init_procp, 1);
         bug_on(make_child(idle_procp, init_procp, 0) != 0,
                "Failed to initialize init process");
@@ -177,7 +218,7 @@ proc_system_init_alloc(void)
 {
         proc_alloc_cache = mem_cache_create("pcb_cache", sizeof(proc_t),
                                              sizeof(proc_t),
-                                             0, proc_ctor, proc_dtor);
+                                             0, NULL, proc_dtor);
         bug_on(!proc_alloc_cache, "Failed to create pcb_cache");
 }
 
@@ -197,20 +238,14 @@ proc_system_init(void)
         proc_system_init_initproc();
 }
 
+
 static proc_t *
 _alloc_process(void)
 {
         proc_t *p;
-        p = mem_cache_alloc(proc_alloc_cache, M_KERNEL);
-        if (p) {
-                proc_init(p);
-                /* Check for errors */
-                if (p->id.pid == 0) { /* Out of PIDs */
-                        kprintf(0, "Out of PIDs\n");
-                        goto free_proc;
-                }
-                else if (p->control.pmm == NULL) /* Out of memory */
-                        goto free_proc;
+        p = mem_cache_alloc(proc_alloc_cache, M_KERNEL | M_ZERO);
+        if (p || proc_init(p)) {
+                goto free_proc;
         }
         return p;
 free_proc:
@@ -251,30 +286,6 @@ free_process(proc_t *p)
         bug_on(p->state.sched_state != PROC_STATE_TERMINATED,
                "Process was freed while in use.");
         mem_cache_free(proc_alloc_cache, p);
-}
-
-void
-proc_init(proc_t *p)
-{
-        if (!p)
-                return;
-        p->id = PROC_ID_INIT;
-        assign_pid(p, next_pid());
-        p->state = PROC_STATE_INIT;
-        p->control = PROC_CONTROL_INIT(p->control);
-        p->control.pmm = pmm_create();
-        p->state.kstack = kmalloc(PAGE_SIZE * 4, M_KERNEL | M_ZERO);
-        set_stack(&p->state.regs, (reg_t)p->state.kstack, PAGE_SIZE * 4);
-}
-
-void
-proc_deinit(proc_t *p)
-{
-        if (!p)
-                return;
-        assign_pid(NULL, p->id.pid);
-        pmm_destroy(p->control.pmm);
-        kfree(p->state.kstack);
 }
 
 __test void
