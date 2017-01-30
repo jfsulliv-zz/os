@@ -71,10 +71,8 @@ collect_init_steps(init_module_t *modules, size_t num)
         init_step_t **stepp;
         LINKERSET_FOREACH(SYSINIT_LINKERSET, stepp)
         {
+                bug_on(!stepp || !(*stepp), "NULL sysinit step pointer");
                 init_step_t *step = *stepp;
-                if (!step) {
-                        panic("NULL sysinit step");
-                }
                 unsigned int module_index = LOG2(step->module_mask);
                 if (module_index >= num) {
                         kprintf(0, "Init step %s has invalid module %d\n",
@@ -157,6 +155,10 @@ sort_init_modules(init_module_t *modules, size_t num)
         start_modules[0] = &copy_modules[0];
         while (num_start_modules > 0)
         {
+                bug_on(num_start_modules == 0,
+                        "Underflow during sorting");
+                bug_on(num_sorted >= num,
+                        "Sorted more modules than expected");
                 init_module_t *s = start_modules[--num_start_modules];
                 sorted_modules[num_sorted++] = s;
 
@@ -176,6 +178,8 @@ sort_init_modules(init_module_t *modules, size_t num)
                          * dependencies, we can put it into the
                          * start_modules table */
                         if (!m->dep_mask) {
+                                bug_on(num_start_modules >= num,
+                                        "OOB access during sorting");
                                 start_modules[num_start_modules++] = m;
                         }
                 }
@@ -233,7 +237,7 @@ execute_init_modules(init_module_t *modules, size_t num)
 static void
 setup_modules(init_module_t *modules)
 {
-        bzero(modules, sizeof(modules));
+        bzero(modules, sizeof(init_module_t) * SYSINIT_NUM_MODULES);
 
         /* Initialize the modules with the EARLY dependency. */
         unsigned int i = 0;
