@@ -46,7 +46,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define IRQ_STACK_ORDER (2)
 #define IRQ_STACK_SIZE  (PAGE_SIZE << IRQ_STACK_ORDER)
-char irq_stack[IRQ_STACK_SIZE];
+extern char irq_stack[];
 
 /* Pushed onto the stack by the CPU before entering an ISR. */
 struct irq_ctx {
