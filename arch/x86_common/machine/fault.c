@@ -40,7 +40,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 static inline bool
 is_kernel_fault(unsigned long addr)
 {
-        return (addr < KERN_BASE);
+        return (addr >= KERN_BASE && addr < KERN_TOP);
 }
 
 static void
