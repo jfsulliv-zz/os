@@ -37,7 +37,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/pfa.h>
 #include <mm/vma.h>
 #include <sys/errno.h>
-#include <sys/kprintf.h>
 #include <sys/stdio.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
@@ -46,7 +45,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 static bool initialized = false;
 
-/* Init proc's page directory and pmm */
+/* Idle proc's page directory and pmm */
 extern pgd_t init_pgd;
 pmm_t init_pmm;
 
@@ -62,7 +61,7 @@ alloc_page(pmm_t *pmm)
         if (!page)
                 return NULL;
         paddr_t phys = page_to_phys(page);
-        if (pmm_map(pmm, _va(phys), phys, M_KERNEL | M_ZERO, PFLAGS_RW)) {
+        if (pmm_map(pmm, _va(phys), phys, M_USER | M_ZERO, PFLAGS_RW)) {
                 pfa_free(page);
                 return NULL;
         }
@@ -178,7 +177,7 @@ pmd_map(pmm_t *pmm, pmd_t *pmd, vaddr_t va, paddr_t pa, mflags_t flags,
                 if (!p)
                         return ENOMEM;
                 pte = (pte_t *)_va(p);
-                pmd->ents[PMD_IND(va)] = (p | KPAGE_TAB);
+                pmd->ents[PMD_IND(va)] = (p | PAGE_TAB);
         }
         return pte_map(pte, va, pa, flags, pflags, old_pa);
 }
@@ -200,7 +199,7 @@ pud_map(pmm_t *pmm, pud_t *pud, vaddr_t va, paddr_t pa, mflags_t flags,
                 if (!p)
                         return ENOMEM;
                 pmd = (pmd_t *)_va(p);
-                pud->ents[PUD_IND(va)] = (p | KPAGE_TAB);
+                pud->ents[PUD_IND(va)] = (p | PAGE_TAB);
         }
         return pmd_map(pmm, pmd, va, pa, flags, pflags, old_pa);
 }
@@ -218,7 +217,7 @@ pgd_map(pmm_t *pmm, pgd_t *pgd, vaddr_t va, paddr_t pa, mflags_t flags,
                 if (!p)
                         return ENOMEM;
                 pud = (pud_t *)_va(p);
-                pgd->ents[PGD_IND(va)] = (p | KPAGE_TAB);
+                pgd->ents[PGD_IND(va)] = (p | PAGE_TAB);
         }
         return pud_map(pmm, pud, va, pa, flags, pflags, old_pa);
 }
@@ -255,7 +254,7 @@ copy_pmd(pmm_t *cur_pmm, pmd_t *dst, const pmd_t *src)
                         goto free_tables;
                 dpte = (pte_t *)v;
                 spte = (pte_t *)_va(pgent_paddr(src->ents[i]));
-                dst->ents[i] = _pa(v) | KPAGE_TAB;
+                dst->ents[i] = _pa(v) | PAGE_TAB;
                 copy_pte(dpte, spte);
                 /* Remove the temp mapping but keep the page alloc'd. */
                 pmm_unmap(cur_pmm, (vaddr_t)v, NULL);
@@ -290,7 +289,7 @@ copy_pud(pmm_t *cur_pmm, pud_t *dst, const pud_t *src)
                         goto free_tables;
                 dpmd = (pmd_t *)v;
                 spmd = (pmd_t *)_va(pgent_paddr(src->ents[i]));
-                dst->ents[i] = _pa(v) | KPAGE_TAB;
+                dst->ents[i] = _pa(v) | PAGE_TAB;
                 if (copy_pmd(cur_pmm, dpmd, spmd))
                         goto free_tables;
                 /* Remove the temp mapping but keep the page alloc'd. */
@@ -324,7 +323,7 @@ copy_pgd(pmm_t *cur_pmm, pgd_t *dst, const pgd_t *src, unsigned int base,
                         goto free_tables;
                 dpud = (pud_t *)v;
                 spud = (pud_t *)_va(pgent_paddr(src->ents[i]));
-                dst->ents[i] = _pa(v) | KPAGE_TAB;
+                dst->ents[i] = _pa(v) | PAGE_TAB;
                 if (copy_pud(cur_pmm, dpud, spud))
                         goto free_tables;
                 /* Remove the temp mapping but keep the page alloc'd. */
@@ -463,8 +462,6 @@ pmm_initialized(void)
         return initialized;
 }
 
-/* Make advanced pmm features available. To be called after the vma
- * subsystem is online. */
 void
 pmm_init_late(void)
 {
@@ -475,7 +472,6 @@ pmm_init_late(void)
         pmm_late_ready = true;
 }
 
-/* Create a new physical map, setting its refcount to 1 */
 pmm_t *
 pmm_create(void)
 {
@@ -483,7 +479,6 @@ pmm_create(void)
         return mem_cache_alloc(pmm_cache, M_KERNEL);
 }
 
-/* Copy the user page table mappings from one pmm to another. */
 int
 pmm_copy_user(pmm_t *dst, const pmm_t *src)
 {
@@ -495,7 +490,6 @@ pmm_copy_user(pmm_t *dst, const pmm_t *src)
                         src->pgdir, base, top);
 }
 
-/* Copy the kernel page table mappings from one pmm to another. */
 int
 pmm_copy_kern(pmm_t *dst, const pmm_t *src)
 {
@@ -507,9 +501,6 @@ pmm_copy_kern(pmm_t *dst, const pmm_t *src)
                         src->pgdir, base, top);
 }
 
-/* Decrease the reference count to the physical map. When the refcount
- * is zero, its resources are freed. We assume that at this point the
- * map contains no mappings and this can be asserted. */
 void
 pmm_destroy(pmm_t *p)
 {
@@ -521,15 +512,12 @@ pmm_destroy(pmm_t *p)
         }
 }
 
-/* Increase the reference count to the physical map. */
 void
 pmm_reference(pmm_t *p)
 {
         p->refct++;
 }
 
-/* Create a mapping from the given vaddr region into the physical
- * address region. Returns 0 on success. */
 int
 pmm_map(pmm_t *p, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
 {
@@ -553,7 +541,6 @@ pmm_map(pmm_t *p, vaddr_t va, paddr_t pa, mflags_t flags, pflags_t pflags)
         return 0;
 }
 
-/* Remove the virtual mapping for vaddr. Assumes va is page aligned. */
 void
 pmm_unmap(pmm_t *p, vaddr_t va, paddr_t *ret_pa)
 {
@@ -567,10 +554,6 @@ pmm_unmap(pmm_t *p, vaddr_t va, paddr_t *ret_pa)
                 *ret_pa = old_pa;
 }
 
-/* Hint to the implementation that all mappings will be removed shortly
- * with calls to pmm_unmap(), followed by a pmm_destroy() or
- * pmm_update(). The implementation may or may not unmap all pages in
- * this function, as decided by efficiency. */
 void
 pmm_unmapping_all(pmm_t *p)
 {
@@ -612,7 +595,6 @@ pgd_find(pgd_t *p, vaddr_t va)
         return phys == 0 ? NULL : pud_find((pud_t *)_va(phys), va);
 }
 
-/* Set the protection flags of the VM range to pflags in the given map. */
 void
 pmm_setprot(pmm_t *p, vaddr_t sva, vaddr_t eva, pflags_t pflags)
 {
@@ -627,15 +609,12 @@ pmm_setprot(pmm_t *p, vaddr_t sva, vaddr_t eva, pflags_t pflags)
         }
 }
 
-/* Set the protection flags for pg to pflags in every mapping. */
 void
 pmm_page_setprot(page_t *pg, pflags_t pflags)
 {
         panic("TODO");
 }
 
-/* Returns true if a mapping exists for va, writing the physical address
- * into *ret_va. Otherwise, returns false. */
 bool
 pmm_getmap(pmm_t *p, vaddr_t va, paddr_t *ret_pa)
 {
@@ -649,8 +628,6 @@ pmm_getmap(pmm_t *p, vaddr_t va, paddr_t *ret_pa)
         return false;
 }
 
-/* Activates the given pmm (i.e. making its mappings the ones valid for
- * the current state of execution). */
 void
 pmm_activate(pmm_t *p)
 {
@@ -665,7 +642,6 @@ pmm_activate(pmm_t *p)
 #define PM_MOD          (1 << PM_MOD_BIT)
 #define PM_REF          (1 << PM_REF_BIT)
 
-/* Deactivate the given pmm, preparing for a subsequent activation. */
 void
 pmm_deactivate(pmm_t *p)
 {

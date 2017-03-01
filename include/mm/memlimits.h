@@ -37,11 +37,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/paging.h>
 
 typedef struct {
-        size_t max_pfn;
-        size_t high_pfn;
-        size_t low_pfn;
-        size_t dma_pfn_end;
-        size_t dma_pfn;
+        size_t max_pfn;         // Number of total pages available
+        size_t high_pfn;        // Start of the 'high' (user) pages
+        size_t low_pfn;         // Start of the 'low' (kernel) pages
+        size_t dma_pfn;         // Index of the first DMA page
+        size_t dma_pfn_end;     // First index above dma_pfn that is non-DMA
 } memlimits_t;
 
 void
