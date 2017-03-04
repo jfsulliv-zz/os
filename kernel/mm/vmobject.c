@@ -65,6 +65,17 @@ vmobject_destroy(vmobject_t *object)
 {
         bug_on(!object, "Destoying NULL object");
         bug_on(object->refct > 0, "Destroying referenced object");
+        // TODO
+}
+
+void
+vmobject_add_page(vmobject_t *object, page_t *pg)
+{
+        bug_on(!object, "NULL object");
+        bug_on(!pg, "NULL page");
+        bug_on(pg->next, "page is already owned");
+        pg->next = object->page;
+        object->page = pg;
 }
 
 static int

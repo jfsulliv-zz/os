@@ -114,8 +114,20 @@ set_stack(struct regs *regs, reg_t stack, unsigned long stack_size)
         regs->ebp = 0;
 }
 
+reg_t
+get_stack(struct regs *regs)
+{
+        return regs->esp;
+}
+
 void
 set_entrypoint(struct regs *regs, reg_t entry)
 {
         regs->eip = entry;
+}
+
+reg_t
+get_entrypoint(struct regs *regs)
+{
+        return regs->eip;
 }

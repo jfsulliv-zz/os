@@ -48,6 +48,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 01/17
  */
 
+#include <mm/paging.h>
 #include <mm/pflags.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -65,5 +66,8 @@ typedef struct {
 // 'size' will be page-aligned (rounding up).
 vmobject_t *vmobject_create_anon(size_t size, pflags_t flags);
 void vmobject_destroy(vmobject_t *);
+
+// Adds the given page to the vmobject's owned linked-list.
+void vmobject_add_page(vmobject_t *, page_t *);
 
 #endif

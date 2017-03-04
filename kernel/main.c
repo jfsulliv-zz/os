@@ -43,6 +43,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/debug.h>
 #include <sys/ksyms.h>
 #include <sys/kprintf.h>
+#include <sys/panic.h>
 #include <sys/proc.h>
 #include <sys/stdio.h>
 #include <sys/string.h>
@@ -90,9 +91,9 @@ print_banner(void)
 }
 SYSINIT_STEP("print_banner", print_banner, SYSINIT_LATE, 0);
 
-static void idle_loop(void);
+static void stub_init(void);
 
-int
+__attribute__((noreturn)) void
 main(multiboot_info_t *mbd)
 {
         disable_interrupts();
@@ -122,7 +123,8 @@ main(multiboot_info_t *mbd)
         DO_TEST(pfa_test);
 
         /* This gives us a current process, which the VMA system needs
-         * to use to identify which address space to use. */
+         * to use to identify which address space to use. This process
+         * will later become the idle process (pid 0). */
         proc_system_early_init();
 
         /* Set up the VMA */
@@ -139,7 +141,8 @@ main(multiboot_info_t *mbd)
         /* Set up any late arch-specific stuff. */
         arch_init_late();
 
-        /* Set up the process tables and process allocation */
+        /* Set up the process tables, process allocation, and pid 1, the
+         * init process. */
         proc_system_init();
         kprintf(0, "Initialized process tables, init process\n");
 
@@ -155,36 +158,64 @@ main(multiboot_info_t *mbd)
          * process. */
         sys_init();
 
+        /* Load the init process with its first program. */
+        // TODO actually load a program. For now we just stub it.
+        stub_init();
+
+        kprintf(0, "Init process map:\n");
+        vmmap_describe(&init_procp->state.vmmap);
+
         enable_interrupts();
         kprintf(0, "Enabled interrupts\n");
 
-        /* Start the scheduler.
-         * 1) Init the scheduler run-queue with the current thread (the
-         *    idle process)
-         * 2) Enqueue the init process
-         * 3) Yield so that the init process gets to run */
-        sched_start(idle_procp);
+        /* Start the scheduler. */
+        sched_start(init_procp);
         // TODO should this take in the initial context (user/kern)
         // as a parameter?
-        // TODO enable this once initproc is properly set up
-        // - Load userspace program
-        // - Set up initial regs for userspace
-        // - Set sched context appropriately
-        //sched_newproc(init_procp);
-        //sched_yield();
-
-        idle_loop();
+        // Also set sched context appropriately
+        jump_to_userspace(get_entrypoint(&init_procp->state.uregs),
+                          get_stack(&init_procp->state.uregs));
+        panic("Failed to drop to userspace");
+        for (;;); // Shut the compiler up
 }
 
 static void
-idle_loop(void)
+stub_init(void)
 {
-        kprintf(0, "Idling!\n");
-        while (1)
-        {
-                // TODO power efficient idle
-                timer_wait_ms(1000);
-                //sched_yield();
-        }
-        for (;;);
+        const size_t code_addr = 0x40000;
+        const size_t stack_addr = 0x7F000;
+        const size_t size = 0x1000;
+
+        vmobject_t *code_obj = vmobject_create_anon(size, PFLAGS_RX);
+        page_t *code_page = pfa_alloc(M_USER);
+        vmobject_t *stack_obj = vmobject_create_anon(size, PFLAGS_RW);
+        page_t *stack_page = pfa_alloc(M_USER);
+        panic_on(!code_obj || !stack_obj || !code_page || !stack_page,
+                        "Failed to allocate initial regions");
+        vmobject_add_page(code_obj, code_page);
+        vmobject_add_page(stack_obj, stack_page);
+        bug_on(vmmap_map_object_at(&init_procp->state.vmmap, code_obj,
+                                   0, code_addr, size),
+                        "Failed to map init code");
+        bug_on(vmmap_map_object_at(&init_procp->state.vmmap, stack_obj,
+                                   0, stack_addr, size),
+                        "Failed to map init stack");
+        // Handled on pagefault later (usually).
+        bug_on(pmm_map(init_procp->control.pmm,
+                       code_addr,
+                       page_to_phys(code_page),
+                       M_USER,
+                       PFLAGS_RWX), "Failed to map code");
+        bug_on(pmm_map(init_procp->control.pmm,
+                       stack_addr,
+                       page_to_phys(stack_page),
+                       M_USER,
+                       PFLAGS_RW), "Failed to map stack");
+        char *instrs = (char *)(code_addr);
+        instrs[0] = '\xeb';
+        instrs[1] = '\xfe';
+
+        set_entrypoint(&init_procp->state.uregs, code_addr);
+        set_stack(&init_procp->state.uregs, stack_addr,
+                  size - 0x10);
 }

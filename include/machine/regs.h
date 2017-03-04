@@ -44,6 +44,8 @@ void dump_regs(void);
 void get_regs(struct regs *to);
 void backtrace(unsigned int max);
 void set_stack(struct regs *regs, reg_t stack, unsigned long stack_size);
+reg_t get_stack(struct regs *regs);
 void set_entrypoint(struct regs *regs, reg_t entry);
+reg_t get_entrypoint(struct regs *regs);
 
 #endif

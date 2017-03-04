@@ -91,6 +91,8 @@ context_switch:
 ; esp+12 : const void *user_stack_top 
 global jump_to_userspace
 jump_to_userspace:
+        push ebp
+        mov ebp, esp
         push dword 3 | (0x8 * 4) ; User SS
         push dword [ebp+12] ; User stack
         push dword 3 | (0x8 * 3) ; User CS

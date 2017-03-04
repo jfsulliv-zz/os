@@ -39,15 +39,15 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/string.h>
 #include <sys/timer.h>
 
-static proc_t idle_proc;
 static proc_t init_proc;
-proc_t *idle_procp;
 proc_t *init_procp;
 
 proc_t **proc_table;
 pid_t    pid_max = 65535; /* Default value */
 
 mem_cache_t *proc_alloc_cache;
+
+extern size_t STACK_TOP;
 
 int
 set_pidmax(pid_t p)
@@ -93,6 +93,7 @@ next_pid(void)
 {
         static pid_t last_pid = 0;
         pid_t ret;
+        // TODO pid randomization?
         for (ret = last_pid+1; ret != last_pid; ret++)
         {
                 if (ret > pid_max)
@@ -132,7 +133,7 @@ static void
 proc_system_init_table(void)
 {
         proc_table = kmalloc((1 + pid_max) * sizeof(void *), M_KERNEL);
-        bug_on(!proc_table, "Failed to allocate process table.");
+        panic_on(!proc_table, "Failed to allocate process table.");
         memset(proc_table, 0, (1 + pid_max) * (sizeof(void *)));
 }
 
@@ -156,7 +157,7 @@ proc_init(proc_t *p)
         return 0;
 
 cleanup_pid:
-        assign_pid(NULL, p->id.pid);
+        unassign_pid(p->id.pid);
         p->id.pid = 0;
 cleanup_pmm:
         pmm_destroy(p->control.pmm);
@@ -170,7 +171,7 @@ proc_deinit(proc_t *p)
         if (!p)
                 return;
         if (p->id.pid > 0)
-                assign_pid(NULL, p->id.pid);
+                unassign_pid(p->id.pid);
         if (p->control.pmm)
                 pmm_destroy(p->control.pmm);
         if (p->state.kstack)
@@ -188,29 +189,24 @@ proc_dtor(void *p, __attribute__((unused)) size_t sz)
 }
 
 static void
-proc_system_init_idleproc(void)
+proc_system_init_initproc_early(void)
 {
-        idle_procp = &idle_proc;
-        idle_proc = PROC_INIT(idle_proc);
-        idle_proc.id.pid = 0;
-        idle_proc.id.ppid = 0;
-        idle_proc.control.pmm = &init_pmm;
-        proc_set_current(idle_procp);
+        init_procp = &init_proc;
+        init_proc = PROC_INIT(init_proc);
+        init_proc.id.pid = 1;
+        init_proc.control.pmm = &init_pmm;
+        get_regs(&init_proc.state.regs);
+        init_proc.state.kstack = (void *)STACK_TOP;
+        set_stack(&init_proc.state.regs, (reg_t)init_proc.state.kstack,
+                  STACK_SIZE);
+        proc_set_current(init_procp);
 }
 
 static void
 proc_system_init_initproc(void)
 {
-        init_procp = &init_proc;
-
-        bug_on(proc_init(init_procp), "Failed to initialize init process");
-        // Make sure we get pid 1 instead of what proc_init gives us
-        assign_pid(NULL, init_procp->id.pid);
         assign_pid(init_procp, 1);
-        bug_on(make_child(idle_procp, init_procp, 0) != 0,
-               "Failed to initialize init process");
-
-        // TODO initialize with userspace program
+        vmmap_init(&init_proc.state.vmmap, init_proc.control.pmm);
 }
 
 static void
@@ -219,13 +215,13 @@ proc_system_init_alloc(void)
         proc_alloc_cache = mem_cache_create("pcb_cache", sizeof(proc_t),
                                              sizeof(proc_t),
                                              0, NULL, proc_dtor);
-        bug_on(!proc_alloc_cache, "Failed to create pcb_cache");
+        panic_on(!proc_alloc_cache, "Failed to create pcb_cache");
 }
 
 void
 proc_system_early_init(void)
 {
-        proc_system_init_idleproc();
+        proc_system_init_initproc_early();
 }
 
 void
@@ -233,8 +229,6 @@ proc_system_init(void)
 {
         proc_system_init_alloc();
         proc_system_init_table();
-        assign_pid(&idle_proc, 0);
-
         proc_system_init_initproc();
 }
 

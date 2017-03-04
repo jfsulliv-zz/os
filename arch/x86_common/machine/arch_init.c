@@ -39,6 +39,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/pmm.h>
 #include <sys/panic.h>
 
+extern size_t STACK_TOP;
+
 void
 arch_init(void)
 {

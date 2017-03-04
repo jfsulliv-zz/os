@@ -49,10 +49,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define PAGE_ROUND(X) ((X) & ~(PAGE_SIZE - 1))
 
 // Returns X rounded up to the next page-aligned value.
-#define PAGE_ROUNDUP(X) \
-        ((X) & (PAGE_SIZE - 1) \
-                ? ((X) & ~(PAGE_SIZE - 1)) \
-                : (X))
+static inline size_t PAGE_ROUNDUP(size_t sz)
+{
+        if (sz <= PAGE_SIZE)
+                return PAGE_SIZE;
+        return sz & (PAGE_SIZE - 1)
+                ? sz & ~(PAGE_SIZE - 1)
+                : sz;
+}
 
 /* Metadata associated with a memory page.
  * Note that the physical address of the page can be derived by the PFA 

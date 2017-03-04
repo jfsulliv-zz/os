@@ -40,6 +40,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
         for(;;); /* Shut up static analyzers */                 \
 } while(0)
 
+#define panic_on(cond,why, ...) if (cond) {                     \
+        _panic(__FILE__, __func__, __LINE__, why, ##__VA_ARGS__); \
+        for(;;); /* Shut up static analyzers */                 \
+}
+
 #define bug(why, ...) do {                                      \
         _bug(__FILE__, __func__, __LINE__, why, ##__VA_ARGS__); \
         for(;;); /* Shut up static analyzers */                 \

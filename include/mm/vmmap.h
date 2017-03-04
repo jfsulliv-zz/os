@@ -116,6 +116,9 @@ void vmmap_init(vmmap_t *, pmm_t *pmm);
 // Deinitialize the given vmmap, freeing its associated resources.
 void vmmap_deinit(vmmap_t *);
 
+// Describe the given vmmap (print out the mappings).
+void vmmap_describe(vmmap_t *);
+
 /* Inserts a mapping for 'object'.
  * 'offset' describes how far into the object's data the map starts,
  * and should be internally page-aligned.

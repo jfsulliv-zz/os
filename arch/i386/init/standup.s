@@ -133,4 +133,5 @@ section .bss
 align 32
 STACK_BASE:
 resb STACK_SZ
+global STACK_TOP
 STACK_TOP:

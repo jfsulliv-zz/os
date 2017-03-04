@@ -7,7 +7,7 @@ CC=clang
 WARNINGS := -Wall -Wextra -Werror=implicit-function-declaration
 CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
             --target=$(ARCH_TGT) -march=$(MARCH) \
-            -fno-asynchronous-unwind-tables -nostdinc++ -nostdinc \
+            -fno-asynchronous-unwind-tables -nostdinc \
             -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
             $(patsubst %,-I%,$(INC)) $(MC) \
             -I $(STDINC_DIR)

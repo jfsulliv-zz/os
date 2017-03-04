@@ -126,7 +126,7 @@ typedef struct process_control {
 #define PROC_CONTROL_INIT(c) ((proc_control_t)  \
 {       .children = LIST_HEAD_INIT(c.children), \
         .pr_list = LIST_HEAD_INIT(c.pr_list),   \
-        .schedinfo = { 0 },                     \
+        .schedinfo = SCHED_INFO_INIT,           \
         .pmm = NULL,                            \
 })
 

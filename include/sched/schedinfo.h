@@ -42,6 +42,12 @@ struct sched_info {
         uint64_t run_time;      // Total time scheduled (us)
 };
 
+#define SCHED_INFO_INIT {       \
+        .prevp = NULL,          \
+        .nextp = NULL,          \
+        .run_time = 0,          \
+}
+
 #else
 #error No scheduler configured (CONF_SCHED_*)
 #endif

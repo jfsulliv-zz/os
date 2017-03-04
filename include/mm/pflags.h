@@ -56,4 +56,20 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef uint32_t pflags_t;
 
+static inline const char*
+PFLAGS_DESCRIBE(pflags_t flags)
+{
+        switch (flags & PFLAGS_GOOD_MASK)
+        {
+                default:         return "---";
+                case PFLAGS_R:   return "r--";
+                case PFLAGS_W:   return "-w-";
+                case PFLAGS_X:   return "--x";
+                case PFLAGS_RW:  return "rw-";
+                case PFLAGS_RX:  return "r-x";
+                case PFLAGS_WX:  return "-wx";
+                case PFLAGS_RWX: return "rwx";
+        }
+}
+
 #endif

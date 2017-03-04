@@ -37,8 +37,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <mm/pfa.h>
 #include <sys/debug.h>
 #include <sys/errno.h>
+#include <sys/kprintf.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
+#include <sys/stdio.h>
 #include <sys/sysinit.h>
 #include <util/cmp.h>
 
@@ -86,6 +88,29 @@ vmmap_deinit(vmmap_t *map)
                 n = p->next;
                 vmmap_area_destroy(p);
                 p = n;
+        }
+}
+
+static void
+vmmap_area_describe(vmmap_area_t *area)
+{
+        kprintf(0, PFMT " - " PFMT " %s %s\n",
+                area->start,
+                area->start + area->size,
+                PFLAGS_DESCRIBE(area->object->pflags),
+                // TODO object name
+                "[anon]");
+}
+
+void
+vmmap_describe(vmmap_t *map)
+{
+        bug_on(!map, "NULL map to describe");
+        vmmap_area_t *p = map->areap;
+        while (p)
+        {
+                vmmap_area_describe(p);
+                p = p->next;
         }
 }
 
