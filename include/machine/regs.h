@@ -36,8 +36,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/types.h>
 #include <stdint.h>
 
-__attribute__((noreturn)) void jump_to_userspace(const void *addr,
-                                                 const void *stack_top);
+__attribute__((noreturn)) void jump_to_userspace(reg_t addr,
+                                                 reg_t stack_top);
 void context_switch(struct regs *saveregs, const struct regs *newregs);
 void dump_regs_from(const struct regs *r);
 void dump_regs(void);

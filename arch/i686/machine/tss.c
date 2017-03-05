@@ -58,10 +58,10 @@ tss_install(void)
 {
         memset(&tss, 0, sizeof(struct tss_entry));
 
-        tss.ss0 = GDT_KDATA_IND * sizeof(struct tss_entry);
-        tss.rsp0 = (uint64_t)irq_stack;
+        tss.rsp0 = (uint64_t)irq_stack_top;
+        tss.iomap_base = sizeof(struct tss_entry);
 
-        /* TODO tss_flush(GDT_TSS_IND); */
+        tss_flush(GDT_TSS_IND);
 }
 
 void

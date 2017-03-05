@@ -147,7 +147,7 @@ static struct gdt_entry gdte_tss = {
         .limit_high = 0, // Set up dynamically
         .available = 0,
         .always_0 = 0,
-        .big = 1,
+        .big = 0,
         .gran = 0,
         .base_high = 0 // Set up dynamically
 };

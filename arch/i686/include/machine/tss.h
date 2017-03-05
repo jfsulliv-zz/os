@@ -35,32 +35,19 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/gdt.h>
 
 struct tss_entry {
-        uint64_t prev_tss;
+        uint32_t _resv0;
         uint64_t rsp0;
-        uint64_t ss0;
         uint64_t rsp1;
-        uint64_t ss1;
         uint64_t rsp2;
-        uint64_t ss2;
-        uint64_t cr3;
-        uint64_t rip;
-        uint64_t eflags;
-        uint64_t rax;
-        uint64_t rcx;
-        uint64_t rdx;
-        uint64_t rbx;
-        uint64_t rsp;
-        uint64_t rbp;
-        uint64_t rsi;
-        uint64_t rdi;
-        uint64_t es;
-        uint64_t cs;
-        uint64_t ss;
-        uint64_t ds;
-        uint64_t fs;
-        uint64_t gs;
-        uint64_t ldt;
-        uint16_t trap;
+        uint64_t _resv1;
+        uint64_t ist1;
+        uint64_t ist2;
+        uint64_t ist3;
+        uint64_t ist4;
+        uint64_t ist5;
+        uint64_t ist6;
+        uint64_t ist7;
+        uint64_t _resv3;
         uint16_t iomap_base;
 } __attribute__((packed));
 

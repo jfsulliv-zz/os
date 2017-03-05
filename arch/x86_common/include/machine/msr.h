@@ -59,12 +59,21 @@ set_msr(uint32_t msr, uint32_t low, uint32_t high)
                 "wrmsr" : : "a" (low), "d" (high), "c" (msr));
 }
 
+static inline uint64_t
+rdmsrl(uint32_t msr)
+{
+        uint32_t low, high;
+        __asm__ __volatile__(
+                "rdmsr" : "=a" (low), "=d" (high) : "c" (msr));
+        return (uint64_t)low + ((uint64_t)high << 32);
+}
+
 static inline void
 wrmsrl(uint32_t msr, uint64_t val)
 {
         __asm__ __volatile__(
-                "wrmsr" : : "c" (msr), "d" ((uint32_t)val),
-                            "a" ((uint32_t)(val >> 32)));
+                "wrmsr" : : "c" (msr), "a" ((uint32_t)val),
+                            "d" ((uint32_t)(val >> 32)));
 }
 
 #endif

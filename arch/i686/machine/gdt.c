@@ -135,6 +135,28 @@ static struct gdt_entry gdte_udata = {
         .base_high = 0
 };
 
+static struct gdt_entry_ext gdte_tss = {
+        .bottom = {
+                .limit_low = 0, // Set up dynamically
+                .base_low  = 0, // Set up dynamically
+                .accessed  = 1, // 1 for TSS
+                .read_write = 0,
+                .conforming_expand_down = 0,
+                .code = 1,
+                .always_1 = 0, // 0 for TSS
+                .dpl = 0,
+                .present = 1,
+                .limit_high = 0, // Set up dynamically
+                .available = 0,
+                .long_mode = 0,
+                .big = 0,
+                .gran = 0,
+                .base_high = 0 // Set up dynamically
+        },
+        .base_higher = 0, // Set up dynamically
+        .always_0 = 0
+};
+
 extern void gdt_flush(uint64_t);
 
 static void
@@ -154,7 +176,6 @@ gdt_set_gate_ext(int gate, struct gdt_entry_ext *e)
 void
 gdt_install(void)
 {
-        return;
         gp.base = (uint64_t)&gdt;
         gp.limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
 
@@ -168,8 +189,10 @@ gdt_install(void)
         gdt_set_gate(GDT_UCODE_IND, &gdte_ucode);
         gdt_set_gate(GDT_UDATA_IND, &gdte_udata);
 
+        tss_setup_gdte(&gdte_tss);
+        gdt_set_gate_ext(GDT_TSS_IND, &gdte_tss);
+
         gdt_flush((uint64_t)&gp);
 
         tss_install();
-
 }

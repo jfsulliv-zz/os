@@ -32,14 +32,18 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/msr.h>
 #include <machine/gdt.h>
 #include <machine/syscall.h>
+#include <sys/kprintf.h>
+#include <sys/stdio.h>
 
 void
 init_msrs(void)
 {
+        wrmsrl(MSR_EFER, rdmsrl(MSR_EFER) | 1);
+
         /* GDT entries that user and kernel code run at */
         wrmsrl(MSR_STAR,
-                ((uint64_t)GDT_KCODE_IND << 32) |
-                ((uint64_t)GDT_UCODE_IND << 48));
+                ((uint64_t)(8 * GDT_KCODE_IND) << 32) |
+                ((uint64_t)(8 * GDT_UCODE_IND) << 48));
         /* Long mode syscall entry point */
         wrmsrl(MSR_LSTAR, (uint64_t)syscall_entry_stub);
         /* Compat mode syscall entry point */

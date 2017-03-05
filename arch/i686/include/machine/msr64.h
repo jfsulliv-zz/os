@@ -32,6 +32,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _MACHINE_MSR32_H_
 #define _MACHINE_MSR32_H_
 
+#define MSR_EFER        0xc0000080 /* Feature control */
 #define MSR_STAR        0xc0000081 /* 32-bit syscall gate address */
 #define MSR_LSTAR       0xc0000082 /* 64-bit syscall gate address */
 #define MSR_CSTAR       0xc0000082 /* compat syscall gate address */

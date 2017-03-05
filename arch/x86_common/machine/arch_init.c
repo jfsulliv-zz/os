@@ -29,6 +29,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <machine/cpu.h>
 #include <machine/gdt.h>
 #include <machine/idt.h>
 #include <machine/irq.h>
@@ -48,6 +49,7 @@ arch_init(void)
         gdt_install();
         idt_install();
 }
+
 
 void
 arch_init_late(void)

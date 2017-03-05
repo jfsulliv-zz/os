@@ -42,7 +42,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/system.h>
 
 char irq_stack[IRQ_STACK_SIZE];
-char *irq_stack_top = &irq_stack[IRQ_STACK_SIZE-1];
+char *irq_stack_top = &irq_stack[IRQ_STACK_SIZE-16];
 
 void (*idt_irq_handlers[INT_IRQ_NUM])(void) = {
         irq0,  irq1,  irq2,  irq3,  irq4,  irq5,  irq6,  irq7,
