@@ -35,12 +35,12 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/irq.h>
 #include <machine/msr.h>
 #include <machine/pic.h>
-#include <machine/syscall.h>
 #include <machine/pit.h>
+#include <machine/tss.h>
+#include <mm/flags.h>
 #include <mm/pmm.h>
+#include <mm/vma.h>
 #include <sys/panic.h>
-
-extern size_t STACK_TOP;
 
 void
 arch_init(void)
@@ -54,14 +54,20 @@ arch_init(void)
 void
 arch_init_late(void)
 {
+        bug_on(!pmm_initialized(), "Late init requires PMM");
         init_msrs();
+
+        const size_t stack_sz = PAGE_SIZE * 4;
+        vaddr_t stack_base = (vaddr_t)kmalloc(stack_sz, M_KERNEL);
+        panic_on(!stack_base, "Out of memory for kernel stack.");
+        set_kernel_stack(stack_base + stack_sz);
 }
 
 /* We assume that interrupts are disabled when this is called. */
 void
 arch_init_irqs(void)
 {
-        bug_on(!pmm_initialized(), "IRQs initialized before pmm.");
+        bug_on(!pmm_initialized(), "IRQ init requires PMM.");
         irq_install();
         pic_remap(PIC1_OFFSET, PIC2_OFFSET);
         pit_install();

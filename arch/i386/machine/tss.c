@@ -31,9 +31,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <machine/gdt.h>
 #include <machine/irq.h>
+#include <machine/msr.h>
 #include <machine/tss.h>
 #include <sys/string.h>
-#include <stdint.h>
 
 struct tss_entry tss;
 
@@ -58,14 +58,13 @@ tss_install(void)
         memset(&tss, 0, sizeof(struct tss_entry));
 
         tss.ss0 = GDT_KDATA_IND * sizeof(struct gdt_entry);
-        tss.esp0 = (unsigned long)irq_stack_top;
         tss.iomap_base = sizeof(struct tss_entry);
 
         tss_flush(GDT_TSS_IND);
 }
 
 void
-set_kernel_stack(uint32_t stack)
+set_kernel_stack(vaddr_t stack)
 {
-        tss.esp0 = stack;
+        wrmsrl(MSR_SYSENTER_ESP, stack);
 }

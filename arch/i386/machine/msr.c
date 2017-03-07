@@ -33,17 +33,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/msr.h>
 #include <machine/syscall.h>
 
-extern char SYSCALL_STACK_BASE_TOP;
-
 void
 init_msrs(void)
 {
         /* TODO once we enable multiple CPUs we need to set these for
          * each logical core. */
         /* Assign the GDT entry that the kernel code runs at. */
-        wrmsrl(MSR_SYSENTER_CS, GDT_KCODE_IND);
-        /* We will manage our own stack, so set the initial stack to 0 */
-        wrmsrl(MSR_SYSENTER_ESP, (uint64_t)&SYSCALL_STACK_BASE_TOP);
+        wrmsrl(MSR_SYSENTER_CS, 8 * GDT_KCODE_IND);
         /* The entry point will be the syscall_entry function */
-        wrmsrl(MSR_SYSENTER_EIP, (uint64_t)syscall_entry_stub);
+        wrmsrl(MSR_SYSENTER_EIP, (uint32_t)syscall_entry_stub);
 }

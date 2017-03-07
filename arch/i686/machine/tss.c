@@ -32,6 +32,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/bitops_generic.h>
 #include <machine/gdt.h>
 #include <machine/irq.h>
+#include <machine/msr.h>
 #include <machine/tss.h>
 #include <sys/string.h>
 #include <stdint.h>
@@ -65,7 +66,7 @@ tss_install(void)
 }
 
 void
-set_kernel_stack(uint64_t stack)
+set_kernel_stack(vaddr_t stack)
 {
-        tss.rsp0 = stack;
+        wrmsrl(MSR_GS_BASE, stack);
 }

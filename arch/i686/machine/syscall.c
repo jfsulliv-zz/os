@@ -34,6 +34,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/panic.h>
 #include <sys/syscall_constants.h>
 #include <sys/syscalls.h>
+#include <sys/timer.h>
 
 typedef int (*syscall_0_fn)();
 typedef int (*syscall_1_fn)(uint64_t);
@@ -81,8 +82,11 @@ do_syscall(const sysent_t *sysent, uint64_t arg0, uint64_t arg1,
         return retval;
 }
 
+static void syscall_entry(void);
 
-/* Starting point of long-mode syscalls.
+/* Starting point of long-mode syscalls. Responsible for putting the
+ * kernel stack into RSP and transferring to the more robust
+ * syscall_entry code.
  * Expected layout:
  *   rax = syscall #
  *   rcx = user RIP to return to
@@ -94,9 +98,28 @@ do_syscall(const sysent_t *sysent, uint64_t arg0, uint64_t arg1,
  *   r8  = arg4
  *   r9  = arg5
  */
-__attribute__((noreturn))
-void
+__attribute__((naked, noreturn)) void
 syscall_entry_stub(void)
+{
+        __asm__ __volatile__(
+                "swapgs\n" // Swap in the kernel stack
+                "mov %%gs:0, %%rsp\n"
+                "push %%rbp\n"
+                "mov %%rsp, %%rbp\n"
+                "push %%rcx\n"
+                "mov %0, %%rcx\n"
+                "callq *%%rcx\n"
+                "pop %%rcx\n"
+                "pop %%rbp\n"
+                "swapgs\n" // Swap out the kernel stack
+                "sysret\n"
+                :
+                : "i" (syscall_entry)
+                :);
+}
+
+static void
+syscall_entry(void)
 {
         uint64_t user_rip, user_rflags;
         __asm__ __volatile__(

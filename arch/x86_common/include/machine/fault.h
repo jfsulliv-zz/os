@@ -50,4 +50,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 void pagefault_handler(const struct irq_ctx *r);
 
+bool is_user_address(vaddr_t);
+
 #endif

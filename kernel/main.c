@@ -50,6 +50,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/sysinit.h>
 #include <sys/timer.h>
 
+#include "machine/msr.h"
+
 char const *startup_banner =
 "===============================\n"
 "=                             =\n"
@@ -138,7 +140,8 @@ main(multiboot_info_t *mbd)
         ksyms_init(mbd);
         kprintf(0, "Initialized kernel symbols\n");
 
-        /* Set up any late arch-specific stuff. */
+        /* Set up any late arch-specific stuff that requires memory
+         * allocation. */
         arch_init_late();
 
         /* Set up the process tables, process allocation, and pid 1, the
@@ -179,6 +182,39 @@ main(multiboot_info_t *mbd)
         for (;;); // Shut the compiler up
 }
 
+// TODO remove this test code
+#if WORD_SIZE == 32
+static void
+codefn(void)
+{
+        __asm__ __volatile__(
+                "pushl %%ecx\n"
+                "pushl %%edx\n"
+                "pushl $0x40011\n"
+                "pushl %%ebp\n"
+                "mov %%esp, %%ebp\n"
+                : : "a" (0)
+        );
+        __asm__ __volatile__(
+                "sysenter\n"
+                "jmp .\n"
+        );
+}
+#else
+static __attribute__((naked)) void
+codefn(void)
+{
+        __asm__ __volatile__(
+                ""
+                : : "a" (0)
+        );
+        __asm__ __volatile__(
+                "syscall\n"
+                "jmp .\n"
+        );
+}
+#endif
+
 static void
 stub_init(void)
 {
@@ -212,10 +248,8 @@ stub_init(void)
                        M_USER,
                        PFLAGS_RW), "Failed to map stack");
         char *instrs = (char *)(code_addr);
-        instrs[0] = '\xeb';
-        instrs[1] = '\xfe';
+        memcpy(instrs, codefn, 32);
 
         set_entrypoint(&init_procp->state.uregs, code_addr);
-        set_stack(&init_procp->state.uregs, stack_addr,
-                  size - 0x10);
+        set_stack(&init_procp->state.uregs, stack_addr, size);
 }

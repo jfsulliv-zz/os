@@ -29,12 +29,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <machine/fault.h>
 #include <machine/idt.h>
 #include <machine/irq.h>
-#include <sys/kprintf.h>
 #include <machine/pic.h>
 #include <machine/regs.h>
-#include <machine/fault.h>
+#include <sys/kprintf.h>
 
 void
 isr_handler(const struct irq_ctx *r)
@@ -42,11 +42,16 @@ isr_handler(const struct irq_ctx *r)
         if (r->int_no == 14) {
                 pagefault_handler(r);
         } else if (r->int_no < INT_EXCEPTION_LIMIT) {
-                kprintf(0, "%s Exception. System Halted!\n",
-                        exception_messages[r->int_no]);
-                dump_regs();
-                backtrace(10);
-                for (;;);
+                if (is_user_address(r->ip)) {
+                        // User fault, kill the process
+                        // TODO
+                } else {
+                        kprintf(0, "%s Exception. System Halted!\n",
+                                exception_messages[r->int_no]);
+                        dump_regs();
+                        backtrace(10);
+                        for (;;);
+                }
         } else {
                 void (*handler)(const struct irq_ctx *r);
                 int irq = r->int_no - INT_IRQ_BASE;

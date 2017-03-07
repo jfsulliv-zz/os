@@ -33,6 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define _MACHINE_TSS_H_
 
 #include <machine/gdt.h>
+#include <machine/types.h>
 
 struct tss_entry {
         uint32_t _resv0;
@@ -53,6 +54,6 @@ struct tss_entry {
 
 void tss_setup_gdte(struct gdt_entry_ext *gdte_tss);
 void tss_install(void);
-void set_kernel_stack(uint64_t stack);
+void set_kernel_stack(vaddr_t stack);
 
 #endif

@@ -102,4 +102,4 @@ jump_to_userspace:
         mov rcx, rdi
         mov rsp, rsi
         xor r11, r11
-        sysret
+        o64 sysret

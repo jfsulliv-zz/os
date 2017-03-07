@@ -198,38 +198,37 @@ int vsnprintf(char *str, size_t size, const char *format, va_list args)
                                 }
                                 c = format[n];
                         }
-			switch (format[n])
-			{
-				case 'd':
-					iarg = va_arg(args, int);
-					expanded_len = itoa(iarg, tmp,
-                                                        zero_pad, min_len,
-                                                        10);
-					break;
-				case 'x':
-					iarg = va_arg(args, int);
-					expanded_len = itoa(iarg, tmp,
-                                                        zero_pad, min_len,
-                                                        16);
-					break;
-				case 's':
-					sarg = va_arg(args, char *);
-                                        len = strlen(sarg);
-                                        expanded_len = (min_len == 0
-                                                ? len
-                                                : min_len);
-                                        pad = min_len - len;
-                                        if (pad > 0 && pad < 255)
-                                                memset(tmp, ' ', pad);
-                                        else
-                                                pad = 0;
-					memcpy(tmp+pad, sarg,
-                                                len > 255-pad
-                                                   ? 255-pad
-                                                   : len);
-					break;
-				default:
-					return -1;
+			switch (format[n]) {
+                        case 'd':
+                                iarg = min_len <= 8
+                                        ? va_arg(args, long)
+                                        : va_arg(args, long long);
+                                expanded_len = itoa(iarg, tmp,
+                                                zero_pad, min_len, 10);
+                                break;
+                        case 'x':
+                                iarg = min_len <= 8
+                                        ? va_arg(args, unsigned long)
+                                        : va_arg(args, unsigned long long);
+                                expanded_len = itoa(iarg, tmp,
+                                                zero_pad, min_len, 16);
+                                break;
+                        case 's':
+                                sarg = va_arg(args, char *);
+                                len = strlen(sarg);
+                                expanded_len = (min_len == 0
+                                        ? len
+                                        : min_len);
+                                pad = min_len - len;
+                                if (pad > 0 && pad < 255)
+                                        memset(tmp, ' ', pad);
+                                else
+                                        pad = 0;
+                                memcpy(tmp+pad, sarg,
+                                        len > 255-pad ? 255-pad : len);
+                                break;
+                        default:
+                                return -1;
 			}
 			if (expanded_len < 0 || i + expanded_len >= size) {
 				return -1;
