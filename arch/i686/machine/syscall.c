@@ -120,9 +120,10 @@ syscall_entry_stub(void)
 static void
 syscall_entry(void)
 {
-        uint64_t syscall_num, arg0, arg1, arg2, arg3, arg4, arg5;
+        int syscall_num;
+        uint64_t arg0, arg1, arg2, arg3, arg4, arg5;
         __asm__ __volatile__(
-                "mov %%rax, %0\n"
+                "mov %%ax, %0\n"
                 "mov %%rdi, %1\n"
                 "mov %%rsi, %2\n"
                 "mov %%rdx, %3\n"

@@ -48,7 +48,7 @@ typedef int (*syscall_5_fn)(int *, uint32_t, uint32_t, uint32_t,
 typedef int (*syscall_6_fn)(int *, uint32_t, uint32_t, uint32_t,
                             uint32_t, uint32_t, uint32_t);
 
-// TODO wrap user_stack in some struct to denote it as user data
+// TODO wrap access to user_stack
 static int
 do_syscall(const sysent_t *sysent, const uint32_t args[],
            const uint32_t *user_stack, int *errno)
@@ -84,8 +84,7 @@ do_syscall(const sysent_t *sysent, const uint32_t args[],
 }
 
 static int32_t
-syscall_entry(uint32_t *user_stack, uint32_t syscall_num,
-              uint32_t args[]);
+syscall_entry(uint32_t *user_stack, int syscall_num, uint32_t args[]);
 
 /* Starting point for the sysenter call.
  * The expected layout at this point as follows:
@@ -141,11 +140,12 @@ syscall_entry_stub(void)
                 "pushl %%edx\n"
                 "pushl %%ecx\n"
                 "pushl %%ebx\n"
-                "pushl %%eax\n"
-                "pushl %%ebp\n"
+                "pushl %%esp\n" // args (first 5)
+                "pushl %%eax\n" // syscall_num
+                "pushl %%ebp\n" // user_stack
                 "call %P1\n"
                 "popl %%ebp\n"
-                "addl $24, %%esp\n"
+                "addl $28, %%esp\n"
                 "movl 4(%%ebp), %%edx\n"
                 "movl 8(%%ebp), %%ecx\n"
                 "_exit:\n"
@@ -159,8 +159,7 @@ syscall_entry_stub(void)
 }
 
 static int32_t
-syscall_entry(uint32_t *user_stack, uint32_t syscall_num,
-              uint32_t args[])
+syscall_entry(uint32_t *user_stack, int syscall_num, uint32_t args[])
 {
         int retval = -1;
         int errno = ENOSYS;

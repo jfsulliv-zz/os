@@ -50,8 +50,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/sysinit.h>
 #include <sys/timer.h>
 
-#include "machine/msr.h"
-
 char const *startup_banner =
 "===============================\n"
 "=                             =\n"
@@ -193,7 +191,7 @@ codefn(void)
                 "pushl $0x40011\n"
                 "pushl %%ebp\n"
                 "mov %%esp, %%ebp\n"
-                : : "a" (0)
+                : : "a" (0), "b" (0)
         );
         __asm__ __volatile__(
                 "sysenter\n"
@@ -205,7 +203,7 @@ static __attribute__((naked)) void
 codefn(void)
 {
         __asm__ __volatile__(
-                ""
+                "xor %%rdi, %%rdi\n"
                 : : "a" (0)
         );
         __asm__ __volatile__(

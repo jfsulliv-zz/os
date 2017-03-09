@@ -30,6 +30,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <sched/scheduler.h>
+#include <sys/errno.h>
 #include <sys/proc.h>
 #include <sys/syscalls.h>
 
