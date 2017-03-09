@@ -52,7 +52,9 @@ typedef struct {
 } syscall_args_t;
 
 /* Forward declaration of each system call */
-__attribute__((noreturn)) void sys_exit(int status); /* 0 */
-pid_t sys_fork(); /* 1 */
+#define SYSCALL(name, ...) int sys_##name(int *errno, ##__VA_ARGS__)
+
+SYSCALL(exit, int status);  // 0
+SYSCALL(fork); // 1
 
 #endif

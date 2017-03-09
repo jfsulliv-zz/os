@@ -100,7 +100,6 @@ sched_atfork(proc_t *parent, proc_t *child)
 {
         bug_on(!parent || !child, "NULL process in fork");
         scheduler->sched_add_impl(child);
-        // TODO should we yield here, or at the caller?
 }
 
 void __attribute__((noreturn))

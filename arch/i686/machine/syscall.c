@@ -36,50 +36,49 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/syscalls.h>
 #include <sys/timer.h>
 
-typedef int (*syscall_0_fn)();
-typedef int (*syscall_1_fn)(uint64_t);
-typedef int (*syscall_2_fn)(uint64_t, uint64_t);
-typedef int (*syscall_3_fn)(uint64_t, uint64_t, uint64_t);
-typedef int (*syscall_4_fn)(uint64_t, uint64_t, uint64_t, uint64_t);
-typedef int (*syscall_5_fn)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
-typedef int (*syscall_6_fn)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t,
+typedef int (*syscall_0_fn)(int *);
+typedef int (*syscall_1_fn)(int *, uint64_t);
+typedef int (*syscall_2_fn)(int *, uint64_t, uint64_t);
+typedef int (*syscall_3_fn)(int *, uint64_t, uint64_t, uint64_t);
+typedef int (*syscall_4_fn)(int *, uint64_t, uint64_t, uint64_t,
                             uint64_t);
+typedef int (*syscall_5_fn)(int *, uint64_t, uint64_t, uint64_t,
+                            uint64_t, uint64_t);
+typedef int (*syscall_6_fn)(int *, uint64_t, uint64_t, uint64_t,
+                            uint64_t, uint64_t, uint64_t);
+
 
 static uint64_t
 do_syscall(const sysent_t *sysent, uint64_t arg0, uint64_t arg1,
-           uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5)
+           uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5,
+           int *errno)
 {
-        uint64_t retval;
         switch(sysent->num_args) {
-                case 0:
-                        retval = ((syscall_0_fn)sysent->fun)();
-                        break;
-                case 1:
-                        retval = ((syscall_1_fn)sysent->fun)(arg0);
-                        break;
-                case 2:
-                        retval = ((syscall_2_fn)sysent->fun)(arg0, arg1);
-                        break;
-                case 3:
-                        retval = ((syscall_3_fn)sysent->fun)(arg0, arg1, arg2);
-                        break;
-                case 4:
-                        retval = ((syscall_4_fn)sysent->fun)(arg0, arg1, arg2,
-                                                             arg3);
-                        break;
-                case 5:
-                        retval = ((syscall_5_fn)sysent->fun)(arg0, arg1, arg2,
-                                                             arg3, arg4);
-                        break;
-                case 6:
-                        retval = ((syscall_6_fn)sysent->fun)(arg0, arg1, arg2,
-                                                             arg3, arg4, arg5);
-                        break;
-                default:
-                        panic("Invalid number of syscall args for syscall "
-                              "%s (was %d)\n", sysent->name, sysent->num_args);
+        case 0:
+                return ((syscall_0_fn)sysent->fun)(
+                        errno);
+        case 1:
+                return ((syscall_1_fn)sysent->fun)(
+                        errno, arg0);
+        case 2:
+                return ((syscall_2_fn)sysent->fun)(
+                        errno, arg0, arg1);
+        case 3:
+                return ((syscall_3_fn)sysent->fun)(
+                        errno, arg0, arg1, arg2);
+        case 4:
+                return ((syscall_4_fn)sysent->fun)(
+                        errno, arg0, arg1, arg2, arg3);
+        case 5:
+                return ((syscall_5_fn)sysent->fun)(
+                        errno, arg0, arg1, arg2, arg3, arg4);
+        case 6:
+                return ((syscall_6_fn)sysent->fun)(
+                        errno, arg0, arg1, arg2, arg3, arg4, arg5);
+        default:
+                panic("Invalid number of syscall args for syscall "
+                      "%s (was %d)\n", sysent->name, sysent->num_args);
         }
-        return retval;
 }
 
 static void syscall_entry(void);
@@ -121,13 +120,6 @@ syscall_entry_stub(void)
 static void
 syscall_entry(void)
 {
-        uint64_t user_rip, user_rflags;
-        __asm__ __volatile__(
-                "mov %%rcx, %0\n"
-                "mov %%r11, %1\n"
-                : "=rm" (user_rip), "=rm" (user_rflags)
-                :
-                :);
         uint64_t syscall_num, arg0, arg1, arg2, arg3, arg4, arg5;
         __asm__ __volatile__(
                 "mov %%rax, %0\n"
@@ -147,18 +139,11 @@ syscall_entry(void)
                 :
                 :);
 
-        uint64_t retval = ENOSYS;
+        int retval = -1;
+        int errno = ENOSYS;
         if (syscall_num <= SYS_MAXNR) {
                 const sysent_t *sysent = &syscalls[syscall_num];
                 retval = do_syscall(sysent, arg0, arg1, arg2, arg3, arg4,
-                                    arg5);
+                                    arg5, &errno);
         }
-
-        __asm__ __volatile__(
-                "mov %1, %%r11\n"
-                "mov %2, %%rax\n"
-                "sysret\n"
-                :
-                : "rcx" (user_rip), "rm" (user_rflags), "rm" (retval)
-                :);
 }

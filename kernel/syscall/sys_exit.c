@@ -34,8 +34,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/proc.h>
 #include <sys/syscalls.h>
 
-__attribute__((noreturn)) void
-sys_exit(int status)
+SYSCALL(exit, int status)
 {
         proc_t *me = proc_current();
         sched_atexit(me);

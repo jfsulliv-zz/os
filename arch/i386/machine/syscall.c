@@ -37,54 +37,50 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/syscalls.h>
 #include <sys/timer.h>
 
-typedef int (*syscall_0_fn)();
-typedef int (*syscall_1_fn)(uint32_t);
-typedef int (*syscall_2_fn)(uint32_t, uint32_t);
-typedef int (*syscall_3_fn)(uint32_t, uint32_t, uint32_t);
-typedef int (*syscall_4_fn)(uint32_t, uint32_t, uint32_t, uint32_t);
-typedef int (*syscall_5_fn)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-typedef int (*syscall_6_fn)(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
+typedef int (*syscall_0_fn)(int *);
+typedef int (*syscall_1_fn)(int *, uint32_t);
+typedef int (*syscall_2_fn)(int *, uint32_t, uint32_t);
+typedef int (*syscall_3_fn)(int *, uint32_t, uint32_t, uint32_t);
+typedef int (*syscall_4_fn)(int *, uint32_t, uint32_t, uint32_t,
                             uint32_t);
+typedef int (*syscall_5_fn)(int *, uint32_t, uint32_t, uint32_t,
+                            uint32_t, uint32_t);
+typedef int (*syscall_6_fn)(int *, uint32_t, uint32_t, uint32_t,
+                            uint32_t, uint32_t, uint32_t);
 
-static uint32_t
-do_syscall(const sysent_t *sysent, uint32_t args[], uint32_t *user_stack)
+// TODO wrap user_stack in some struct to denote it as user data
+static int
+do_syscall(const sysent_t *sysent, const uint32_t args[],
+           const uint32_t *user_stack, int *errno)
 {
-        uint32_t retval;
         switch(sysent->num_args) {
         case 0:
-                retval = ((syscall_0_fn)sysent->fun)();
-                break;
+                return ((syscall_0_fn)sysent->fun)(
+                        errno);
         case 1:
-                retval = ((syscall_1_fn)sysent->fun)(args[0]);
-                break;
+                return ((syscall_1_fn)sysent->fun)(
+                        errno, args[0]);
         case 2:
-                retval = ((syscall_2_fn)sysent->fun)(args[0], args[1]);
-                break;
+                return ((syscall_2_fn)sysent->fun)(
+                        errno, args[0], args[1]);
         case 3:
-                retval = ((syscall_3_fn)sysent->fun)(args[0], args[1],
-                                                     args[2]);
-                break;
+                return ((syscall_3_fn)sysent->fun)(
+                        errno, args[0], args[1], args[2]);
         case 4:
-                retval = ((syscall_4_fn)sysent->fun)(args[0], args[1],
-                                                     args[2], args[3]);
-                break;
+                return ((syscall_4_fn)sysent->fun)(
+                        errno, args[0], args[1], args[2], args[3]);
         case 5:
-                retval = ((syscall_5_fn)sysent->fun)(args[0], args[1],
-                                                     args[2], args[3],
-                                                     args[4]);
-                break;
+                return ((syscall_5_fn)sysent->fun)(
+                        errno, args[0], args[1], args[2], args[3],
+                        args[4]);
         case 6:
-                retval = ((syscall_6_fn)sysent->fun)(args[0], args[1],
-                                                     args[2], args[3],
-                                                     args[4],
-                                                     // arg5
-                                                     user_stack[4]);
-                break;
+                return ((syscall_6_fn)sysent->fun)(
+                        errno, args[0], args[1], args[2], args[3],
+                        args[4], user_stack[4]);
         default:
                 panic("Invalid number of syscall args for syscall "
                       "%s (was %d)\n", sysent->name, sysent->num_args);
         }
-        return retval;
 }
 
 static int32_t
@@ -166,10 +162,11 @@ static int32_t
 syscall_entry(uint32_t *user_stack, uint32_t syscall_num,
               uint32_t args[])
 {
-        uint32_t retval = ENOSYS;
+        int retval = -1;
+        int errno = ENOSYS;
         if (syscall_num <= SYS_MAXNR) {
                 const sysent_t *sysent = &syscalls[syscall_num];
-                retval = do_syscall(sysent, args, user_stack);
+                retval = do_syscall(sysent, args, user_stack, &errno);
         }
         return retval;
 }

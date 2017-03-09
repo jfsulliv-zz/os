@@ -33,13 +33,15 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/proc.h>
 #include <sys/syscalls.h>
 
-pid_t
-sys_fork(void)
+SYSCALL(fork)
 {
         proc_t *me = proc_current();
-        proc_t *child = copy_process(me, NULL);
-        if (!child)
+        proc_t *child = copy_process(me, FORK_FLAGS_COPYUSER);
+        if (!child) {
+                *errno = EAGAIN;
                 return -1;
+        }
         sched_atfork(me, child);
+        // TODO child return 0
         return child->id.pid;
 }
