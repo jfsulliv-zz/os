@@ -148,7 +148,7 @@ syscall_entry(void)
                 :);
 
         uint64_t retval = ENOSYS;
-        if (syscall_num < SYS_MAXNR) {
+        if (syscall_num <= SYS_MAXNR) {
                 const sysent_t *sysent = &syscalls[syscall_num];
                 retval = do_syscall(sysent, arg0, arg1, arg2, arg3, arg4,
                                     arg5);
