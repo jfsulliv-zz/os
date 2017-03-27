@@ -32,6 +32,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _MACHINE_MSR_H_
 #define _MACHINE_MSR_H_
 
+#include <machine/cpu.h>
 #include <machine/params.h>
 #include <machine/regs.h>
 #include <stdint.h>
@@ -43,7 +44,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 void
-init_msrs(void);
+init_msrs(cpu_t *);
 
 static inline void
 get_msr(uint32_t msr, uint32_t *low, uint32_t *high)

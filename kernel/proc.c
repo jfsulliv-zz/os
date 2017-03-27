@@ -29,7 +29,6 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <machine/percpu.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
 #include <sched/scheduler.h>
@@ -63,14 +62,6 @@ set_pidmax(pid_t p)
         proc_table = tmp;
         pid_max    = p;
         return 0;
-}
-
-void
-proc_set_current(proc_t *new)
-{
-        bug_on(!new, "Assigning NULL current");
-        percpu_t *percpu = PERCPU_STRUCT;
-        percpu->current = new;
 }
 
 static void
@@ -117,8 +108,6 @@ make_child(proc_t *par, proc_t *p, fork_req_t req)
                 return 1;
         }
         if (req & FORK_FLAGS_COPYUSER) {
-                memcpy(&p->state.uregs, &par->state.uregs,
-                       sizeof(struct regs));
                 if (pmm_copy_user(p->control.pmm,
                                   (const pmm_t *)par->control.pmm)) {
                         kprintf(0, "Failed to copy user page tables\n");
@@ -149,10 +138,6 @@ proc_init(proc_t *p)
         p->control.pmm = pmm_create();
         if (!p->control.pmm)
                goto cleanup_pid;
-        p->state.kstack = kmalloc(PAGE_SIZE * 4, M_KERNEL);
-        if (!p->state.kstack)
-                goto cleanup_pmm;
-        set_stack(&p->state.regs, (reg_t)p->state.kstack, PAGE_SIZE * 4);
         vmmap_init(&p->state.vmmap, p->control.pmm);
         return 0;
 
@@ -174,8 +159,6 @@ proc_deinit(proc_t *p)
                 unassign_pid(p->id.pid);
         if (p->control.pmm)
                 pmm_destroy(p->control.pmm);
-        if (p->state.kstack)
-                kfree(p->state.kstack);
         vmmap_deinit(&p->state.vmmap);
 }
 
@@ -196,16 +179,13 @@ proc_system_init_initproc_early(void)
         init_proc.id.pid = 1;
         init_proc.control.pmm = &init_pmm;
         get_regs(&init_proc.state.regs);
-        init_proc.state.kstack = (void *)STACK_TOP;
-        set_stack(&init_proc.state.regs, (reg_t)init_proc.state.kstack,
-                  STACK_SIZE);
-        proc_set_current(init_procp);
 }
 
 static void
 proc_system_init_initproc(void)
 {
         assign_pid(init_procp, 1);
+        proc_set_current(init_procp);
         vmmap_init(&init_proc.state.vmmap, init_proc.control.pmm);
 }
 

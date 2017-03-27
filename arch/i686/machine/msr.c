@@ -28,6 +28,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.  */
 
+#include <machine/cpu.h>
 #include <machine/gdt.h>
 #include <machine/irq.h>
 #include <machine/msr.h>
@@ -36,16 +37,19 @@ THE POSSIBILITY OF SUCH DAMAGE.  */
 #include <sys/stdio.h>
 
 void
-init_msrs(void)
+init_msrs(cpu_t *cpu)
 {
         wrmsrl(MSR_EFER, rdmsrl(MSR_EFER) | 1);
 
-        /* GDT entries that user and kernel code run at */
         wrmsrl(MSR_STAR,
                 ((uint64_t)(8ULL * (uint64_t)GDT_KCODE_IND) << 32) |
                 ((uint64_t)(8ULL * (uint64_t)GDT_UCODE_IND) << 48));
-        /* Long mode syscall entry point */
         wrmsrl(MSR_LSTAR, (uint64_t)syscall_entry_stub);
         /* Compat mode syscall entry point */
         // TODO wrmsrl(MSR_CSTAR, (uint64_t)syscall_compat_entry_stub);
+        wrmsrl(MSR_GS_BASE, (uint64_t)cpu);
+        // Load this into the GS register and re-load the original MSR.
+        // This way, we can use the GS reference after this point.
+        __asm__ __volatile__("swapgs");
+        wrmsrl(MSR_GS_BASE, (uint64_t)cpu);
 }

@@ -29,21 +29,45 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_ARCH_PERCPU_H_
-#define _MACHINE_ARCH_PERCPU_H_
+#ifndef _MACHINE_ARCH_CPU_H_ 
+#define _MACHINE_ARCH_CPU_H_
 
 /*
- * machine/arch_percpu.h - Per CPU data for the i686
+ * machine/arch_cpu.h
  *
  * James Sullivan <sullivan.james.f@gmail.com>
- * 12/16
+ * 08/15
  */
 
-#include <machine/gdt.h>
+#include <machine/params.h>
 
-#define _ARCH_PERCPU_FIELDS /* Empty */
+#if WORD_SIZE == 32
+#include <machine/arch_cpu_i386.h>
+#else
+#include <machine/arch_cpu_i686.h>
+#endif
 
-/* TODO */
-#define _ARCH_CURCPU 0
+enum cpuid_requests {
+        CPUID_GETVENDORSTRING,
+        CPUID_GETFEATURES,
+        CPUID_GETTLB,
+        CPUID_GETSERIAL,
+
+        CPUID_INTELEXTENDED=0x80000000,
+        CPUID_INTELFEATURES,
+        CPUID_INTELBRANDSTRING,
+        CPUID_INTELBRANDSTRINGMORE,
+        CPUID_INTELBRANDSTRINGEND,
+};
+
+static inline void cpuid(int code, unsigned int *a, unsigned int *d) {
+        __asm__ __volatile__("cpuid":"=a"(*a),"=d"(*d):"a"(code):"ecx","ebx");
+}
+
+static inline int cpuid_string(int code, unsigned int where[4]) {
+        __asm__ __volatile__("cpuid":"=a"(*where),"=b"(*(where+1)),
+                             "=c"(*(where+2)),"=d"(*(where+3)):"a"(code));
+        return (int)where[0];
+}
 
 #endif

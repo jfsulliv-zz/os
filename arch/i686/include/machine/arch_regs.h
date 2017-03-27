@@ -47,6 +47,74 @@ struct regs
         reg_t rip, cs, flags, rsp, ss;
 };
 
+#define REGS_RDI_OFFS   0x00
+#define REGS_RSI_OFFS   0x08
+#define REGS_RDX_OFFS   0x10
+#define REGS_RCX_OFFS   0x18
+#define REGS_R8_OFFS    0x20
+#define REGS_R9_OFFS    0x28
+#define REGS_RAX_OFFS   0x30
+#define REGS_RBX_OFFS   0x38
+#define REGS_RBP_OFFS   0x40
+#define REGS_R10_OFFS   0x48
+#define REGS_R11_OFFS   0x50
+#define REGS_R12_OFFS   0x58
+#define REGS_R13_OFFS   0x60
+#define REGS_R14_OFFS   0x68
+#define REGS_R15_OFFS   0x70
+#define REGS_DS_OFFS    0x78
+#define REGS_ES_OFFS    0x80
+#define REGS_FS_OFFS    0x88
+#define REGS_GS_OFFS    0x90
+#define REGS_INT_OFFS   0x98
+#define REGS_ERR_OFFS   0xA0
+#define REGS_RIP_OFFS   0xA8
+#define REGS_CS_OFFS    0xB0
+#define REGS_FLG_OFFS   0xB8
+#define REGS_RSP_OFFS   0xC0
+#define REGS_SS_OFFS    0xC8
+#define REGS_SIZE       0xD0
+
+#define REGS_PUSH_ALL \
+        "push %%rdi\n" \
+        "push %%rsi\n" \
+        "push %%rdx\n" \
+        "push %%rcx\n" \
+        "push %%r8\n" \
+        "push %%rax\n" \
+        "push %%rbx\n" \
+        "push %%r10\n" \
+        "push %%r11\n" \
+        "push %%r12\n" \
+        "push %%r13\n" \
+        "push %%r14\n" \
+        "push %%r15\n" \
+        "push %%ds\n" \
+        "push %%es\n" \
+        "push %%fs\n" \
+        "push %%cs\n" \
+        "push %%ss\n" \
+
+#define REGS_POP_ALL \
+        "pop %%ss\n" \
+        "pop %%cs\n" \
+        "pop %%fs\n" \
+        "pop %%es\n" \
+        "pop %%ds\n" \
+        "pop %%r15\n" \
+        "pop %%r14\n" \
+        "pop %%r13\n" \
+        "pop %%r12\n" \
+        "pop %%r11\n" \
+        "pop %%r10\n" \
+        "pop %%rbx\n" \
+        "pop %%rax\n" \
+        "pop %%r8\n" \
+        "pop %%rcx\n" \
+        "pop %%rdx\n" \
+        "pop %%rsi\n" \
+        "pop %%rdi\n" \
+
 static inline reg_t
 get_cr2(void)
 {

@@ -81,8 +81,6 @@ do_syscall(const sysent_t *sysent, uint64_t arg0, uint64_t arg1,
         }
 }
 
-static void syscall_entry(void);
-
 /* Starting point of long-mode syscalls. Responsible for putting the
  * kernel stack into RSP and transferring to the more robust
  * syscall_entry code.
@@ -97,54 +95,23 @@ static void syscall_entry(void);
  *   r8  = arg4
  *   r9  = arg5
  */
-__attribute__((naked, noreturn)) void
-syscall_entry_stub(void)
+__attribute__((noreturn)) void
+syscall_child_exit(proc_t *child)
 {
-        __asm__ __volatile__(
-                "swapgs\n" // Swap in the kernel stack
-                "mov %%gs:0, %%rsp\n"
-                "push %%rbp\n"
-                "mov %%rsp, %%rbp\n"
-                "push %%rcx\n"
-                "mov %0, %%rcx\n"
-                "callq *%%rcx\n"
-                "pop %%rcx\n"
-                "pop %%rbp\n"
-                "swapgs\n" // Swap out the kernel stack
-                "sysret\n"
-                :
-                : "i" (syscall_entry)
-                :);
 }
 
-static void
+int
 syscall_entry(void)
 {
-        int syscall_num;
-        uint64_t arg0, arg1, arg2, arg3, arg4, arg5;
-        __asm__ __volatile__(
-                "mov %%ax, %0\n"
-                "mov %%rdi, %1\n"
-                "mov %%rsi, %2\n"
-                "mov %%rdx, %3\n"
-                "mov %%r10, %4\n"
-                "mov %%r8, %5\n"
-                "mov %%r9, %6\n"
-                : "=rm" (syscall_num),
-                  "=rm" (arg0),
-                  "=rm" (arg1),
-                  "=rm" (arg2),
-                  "=rm" (arg3),
-                  "=rm" (arg4),
-                  "=rm" (arg5)
-                :
-                :);
+        struct regs *uregs = &cpu_current()->proc->state.uregs;
 
         int retval = -1;
         int errno = ENOSYS;
-        if (syscall_num <= SYS_MAXNR) {
-                const sysent_t *sysent = &syscalls[syscall_num];
-                retval = do_syscall(sysent, arg0, arg1, arg2, arg3, arg4,
-                                    arg5, &errno);
+        if (uregs->rax < SYS_MAXNR) {
+                const sysent_t *sysent = &syscalls[uregs->rax];
+                retval = do_syscall(sysent, uregs->rdi, uregs->rsi,
+                                    uregs->rdx, uregs->r10, uregs->r8,
+                                    uregs->r9, &errno);
         }
+        return retval;
 }

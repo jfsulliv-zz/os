@@ -77,6 +77,8 @@ _start_hh:
         ;;; Well that shouldn't have happened...
         hlt
 
+; esp+4: Address of GDTP
+; esp+8: Index for GS
 global gdt_flush
 gdt_flush:
         mov eax, [esp+4]
@@ -85,8 +87,10 @@ gdt_flush:
         mov ds, ax
         mov es, ax
         mov fs, ax
-        mov gs, ax
         mov ss, ax
+        mov eax, [esp+8]
+        sal ax, 3
+        mov gs, ax
         jmp 0x08:.flush
 .flush:
         ret

@@ -13,7 +13,6 @@ _start_hh:
         mov ax, 0x10
         mov ds, ax
         mov fs, ax
-        mov gs, ax
         mov ss, ax
         mov es, ax
         cli
@@ -57,7 +56,6 @@ gdt_flush:
         mov ds, ax
         mov es, ax
         mov fs, ax
-        mov gs, ax
         ret
 
 global idt_flush

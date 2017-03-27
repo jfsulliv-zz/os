@@ -29,21 +29,43 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _MACHINE_ARCH_PERCPU_H_
-#define _MACHINE_ARCH_PERCPU_H_
+#ifndef __ARCH_CPU_I686_H__
+#define __ARCH_CPU_I686_H__
 
 /*
- * machine/arch_percpu.h - Per CPU data for the i386
+ * machine/cpu_i686.h
  *
  * James Sullivan <sullivan.james.f@gmail.com>
- * 12/16
+ * 08/15
  */
 
 #include <machine/gdt.h>
+#include <machine/idt.h>
+#include <machine/regs.h>
+#include <machine/tss.h>
 
-#define _ARCH_PERCPU_FIELDS /* Empty */
+#define CACHELINE_SZ 64
 
-/* TODO */
-#define _ARCH_CURCPU 0
+typedef struct {
+        char manufacturer_string[13];
+        int max_basic_input_val;
+        int max_ext_input_val;
+        int features_ecx, features_edx;
+        int ext_features_ecx, ext_features_edx;
+        char stepping, model, family, type;
+        char cache_line_size, logical_processors, lapic_id;
+        char cpu_brand[49];
+} cpuid_t;
+
+typedef struct arch_cpu {
+        reg_t scratch; // Used in syscall entry stub
+        // XXX add new fields below this line
+        cpuid_t cpuid;
+        struct gdt_entry gdt[NUM_GDT_ENTRIES];
+        struct gdt_ptr   gp;
+        struct idt_entry idt[NUM_IDT_ENTRIES];
+        struct idt_ptr   idtp;
+        struct tss_entry tss;
+} arch_cpu_t;
 
 #endif

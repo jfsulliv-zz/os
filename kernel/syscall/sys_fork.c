@@ -34,6 +34,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/proc.h>
 #include <sys/syscalls.h>
 
+static void child_return(void *arg);
+
 SYSCALL(fork)
 {
         proc_t *me = proc_current();
@@ -43,6 +45,6 @@ SYSCALL(fork)
                 return -1;
         }
         sched_atfork(me, child);
-        // TODO child return 0
+        *errno = 0;
         return child->id.pid;
 }

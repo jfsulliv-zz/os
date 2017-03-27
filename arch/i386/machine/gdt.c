@@ -36,6 +36,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 06/15
  */
 
+#include <machine/cpu.h>
 #include <machine/gdt.h>
 #include <machine/tss.h>
 #include <sys/string.h>
@@ -44,7 +45,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 struct gdt_entry gdt[NUM_GDT_ENTRIES];
 struct gdt_ptr   gp;
 
-static struct gdt_entry gdte_null = {
+static const struct gdt_entry gdte_null = {
         .limit_low = 0,
         .base_low  = 0,
         .accessed  = 0,
@@ -62,7 +63,7 @@ static struct gdt_entry gdte_null = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_code_ring0 = {
+static const struct gdt_entry gdte_code_ring0 = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -80,7 +81,7 @@ static struct gdt_entry gdte_code_ring0 = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_data_ring0 = {
+static const struct gdt_entry gdte_data_ring0 = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -98,7 +99,7 @@ static struct gdt_entry gdte_data_ring0 = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_code_ring3 = {
+static const struct gdt_entry gdte_code_ring3 = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -116,7 +117,7 @@ static struct gdt_entry gdte_code_ring3 = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_data_ring3 = {
+static const struct gdt_entry gdte_data_ring3 = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -134,7 +135,7 @@ static struct gdt_entry gdte_data_ring3 = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_tss = {
+static const struct gdt_entry gdte_tss = {
         .limit_low = 0, // Set up dynamically
         .base_low  = 0, // Set up dynamically
         .accessed  = 1, // 1 for TSS
@@ -152,36 +153,61 @@ static struct gdt_entry gdte_tss = {
         .base_high = 0 // Set up dynamically
 };
 
-extern void gdt_flush(unsigned long);
+static const struct gdt_entry gdte_percpu = {
+        .limit_low = 0, // Set up dynamically
+        .base_low  = 0, // Set up dynamically
+        .accessed  = 0,
+        .read_write = 1,
+        .conforming_expand_down = 0,
+        .code = 0,
+        .always_1 = 1,
+        .dpl = 0,
+        .present = 1,
+        .limit_high = 0, // Set up dynamically
+        .available = 0,
+        .always_0 = 0,
+        .big = 1,
+        .gran = 0,
+        .base_high = 0 // Set up dynamically
+};
+
+extern void gdt_flush(uint32_t, uint32_t);
 
 static void
-gdt_set_gate(int gate, struct gdt_entry *e)
+setup_percpu_gdte(const cpu_t *cpu, struct gdt_entry *gdte)
 {
-        memcpy(&gdt[gate], e, sizeof(struct gdt_entry));
+        unsigned long base = (unsigned long)cpu;
+        unsigned long limit = sizeof(cpu_t);
+        gdte->base_low = (base & 0xFFFFFF);
+        gdte->base_high = ((base & 0xFF000000) >> 24);
+        gdte->limit_low = (limit & 0xFFFF);
+        gdte->limit_high = ((limit & 0xF0000) >> 16);
 }
 
 void
-gdt_install(void)
+gdt_install(cpu_t *cpu)
 {
-        gp.base = (unsigned long)&gdt;
-        gp.limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
+        struct gdt_entry *gdt = &cpu->arch_cpu.gdt[0];
+        struct gdt_ptr *gp = &cpu->arch_cpu.gp;
+        gp->base = (uint32_t)gdt;
+        gp->limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
 
-        /* Default NULL gate */
-        gdt_set_gate(GDT_NULL_IND, &gdte_null);
+        // Copy the reference entries in.
+        gdt[GDT_NULL_IND] = gdte_null;
+        gdt[GDT_KCODE_IND] = gdte_code_ring0;
+        gdt[GDT_KDATA_IND] = gdte_data_ring0;
+        gdt[GDT_UCODE_IND] = gdte_code_ring3;
+        gdt[GDT_UDATA_IND] = gdte_data_ring3;
+        gdt[GDT_TSS_IND] = gdte_tss;
+        gdt[GDT_PCPU_IND] = gdte_percpu;
 
-        /* Set up a flat memory layout with separate CS/DS sections for
-         * privileged and non-privileged segments. */
-        gdt_set_gate(GDT_KCODE_IND, &gdte_code_ring0);
-        gdt_set_gate(GDT_KDATA_IND, &gdte_data_ring0);
-        gdt_set_gate(GDT_UCODE_IND, &gdte_code_ring3);
-        gdt_set_gate(GDT_UDATA_IND, &gdte_data_ring3);
+        // Set up the TSS and percpu entries with the right addresses
+        tss_setup_gdte(&cpu->arch_cpu.tss, gdt + GDT_TSS_IND);
+        setup_percpu_gdte(cpu, gdt + GDT_PCPU_IND);
 
-        /* Set up our TSS */
-        tss_setup_gdte(&gdte_tss);
-        gdt_set_gate(GDT_TSS_IND, &gdte_tss);
+        // Write the GDT out
+        gdt_flush((uint32_t)gp, GDT_PCPU_IND);
 
-        gdt_flush((unsigned long)&gp);
-
-        tss_install();
-
+        // Go set up and write out the TSS, too
+        tss_install(&cpu->arch_cpu.tss);
 }

@@ -127,6 +127,10 @@ main(multiboot_info_t *mbd)
          * will later become the idle process (pid 0). */
         proc_system_early_init();
 
+        /* Once we have the first process, we can initialize the CPU
+         * control block with it */
+        cpu_init_early();
+
         /* Set up the VMA */
         vma_init();
         DO_TEST(vma_test);
@@ -137,10 +141,6 @@ main(multiboot_info_t *mbd)
         /* Okay, now we can get some symbols. */
         ksyms_init(mbd);
         kprintf(0, "Initialized kernel symbols\n");
-
-        /* Set up any late arch-specific stuff that requires memory
-         * allocation. */
-        arch_init_late();
 
         /* Set up the process tables, process allocation, and pid 1, the
          * init process. */
@@ -188,10 +188,10 @@ codefn(void)
         __asm__ __volatile__(
                 "pushl %%ecx\n"
                 "pushl %%edx\n"
-                "pushl $0x40011\n"
+                "pushl $0x40017\n"
                 "pushl %%ebp\n"
                 "mov %%esp, %%ebp\n"
-                : : "a" (0), "b" (0)
+                : : "a" (2), "b" (0)
         );
         __asm__ __volatile__(
                 "sysenter\n"
@@ -204,7 +204,7 @@ codefn(void)
 {
         __asm__ __volatile__(
                 "xor %%rdi, %%rdi\n"
-                : : "a" (0)
+                : : "a" (2)
         );
         __asm__ __volatile__(
                 "syscall\n"

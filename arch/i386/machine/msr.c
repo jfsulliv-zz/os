@@ -29,17 +29,15 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <machine/cpu.h>
 #include <machine/gdt.h>
 #include <machine/msr.h>
 #include <machine/syscall.h>
 
 void
-init_msrs(void)
+init_msrs(cpu_t *cpu)
 {
-        /* TODO once we enable multiple CPUs we need to set these for
-         * each logical core. */
-        /* Assign the GDT entry that the kernel code runs at. */
         wrmsrl(MSR_SYSENTER_CS, 8 * GDT_KCODE_IND);
-        /* The entry point will be the syscall_entry function */
         wrmsrl(MSR_SYSENTER_EIP, (uint32_t)syscall_entry_stub);
+        wrmsrl(MSR_SYSENTER_ESP, cpu->kstack);
 }

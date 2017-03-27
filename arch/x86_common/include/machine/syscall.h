@@ -32,7 +32,15 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _MACHINE_SYSCALL_H_
 #define _MACHINE_SYSCALL_H_
 
+#include <sys/proc.h>
+
 /* The entry point for SYSCALL/SYSRETURN (i686) or SYSENTER/SYSEXIT (i386) */
 extern void syscall_entry_stub(void);
+
+/* The kernel address for a child processes across a fork. Callers
+ * are expected to have already set the user register frame up so that
+ * the arguments can be marshalled into registers and control
+ * transferred back into userspace. */
+extern void syscall_child_trampoline(proc_t *child);
 
 #endif

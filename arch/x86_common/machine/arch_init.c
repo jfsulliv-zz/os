@@ -33,7 +33,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/gdt.h>
 #include <machine/idt.h>
 #include <machine/irq.h>
-#include <machine/msr.h>
+#include <machine/params.h>
 #include <machine/pic.h>
 #include <machine/pit.h>
 #include <machine/tss.h>
@@ -46,21 +46,8 @@ void
 arch_init(void)
 {
         /* Set up memory segmentation and an IDT. */
-        gdt_install();
+        gdt_install(&cpu_primary);
         idt_install();
-}
-
-
-void
-arch_init_late(void)
-{
-        bug_on(!pmm_initialized(), "Late init requires PMM");
-        init_msrs();
-
-        const size_t stack_sz = PAGE_SIZE * 4;
-        vaddr_t stack_base = (vaddr_t)kmalloc(stack_sz, M_KERNEL);
-        panic_on(!stack_base, "Out of memory for kernel stack.");
-        set_kernel_stack(stack_base + stack_sz);
 }
 
 /* We assume that interrupts are disabled when this is called. */

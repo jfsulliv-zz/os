@@ -110,7 +110,7 @@ sched_atexit(proc_t *proc)
         bug_on(!next, "Last process exiting.");
         scheduler->sched_rem_impl(proc);
         sched_switch(next, NULL);
-        for (;;); /* Make the compiler happy */
+        panic("Failed to switch to next process");
 }
 
 void

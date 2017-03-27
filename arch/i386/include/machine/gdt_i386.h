@@ -38,7 +38,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #define GDT_UCODE_IND   3
 #define GDT_UDATA_IND   4
 #define GDT_TSS_IND     5
-#define NUM_GDT_ENTRIES 6
+#define GDT_PCPU_IND    6
+#define NUM_GDT_ENTRIES 7
 
 struct gdt_entry
 {

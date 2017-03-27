@@ -36,6 +36,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 06/15
  */
 
+#include <machine/cpu.h>
 #include <machine/gdt.h>
 #include <machine/tss.h>
 #include <sys/string.h>
@@ -45,7 +46,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 struct gdt_entry gdt[NUM_GDT_ENTRIES];
 struct gdt_ptr   gp;
 
-static struct gdt_entry gdte_null = {
+static const struct gdt_entry gdte_null = {
         .limit_low = 0,
         .base_low  = 0,
         .accessed  = 0,
@@ -63,7 +64,7 @@ static struct gdt_entry gdte_null = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_kcode = {
+static const struct gdt_entry gdte_kcode = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -81,7 +82,7 @@ static struct gdt_entry gdte_kcode = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_kdata = {
+static const struct gdt_entry gdte_kdata = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -99,7 +100,7 @@ static struct gdt_entry gdte_kdata = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_ucode = {
+static const struct gdt_entry gdte_ucode = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -117,7 +118,7 @@ static struct gdt_entry gdte_ucode = {
         .base_high = 0
 };
 
-static struct gdt_entry gdte_udata = {
+static const struct gdt_entry gdte_udata = {
         .limit_low = 0xffff,
         .base_low  = 0,
         .accessed  = 0,
@@ -135,7 +136,7 @@ static struct gdt_entry gdte_udata = {
         .base_high = 0
 };
 
-static struct gdt_entry_ext gdte_tss = {
+static const struct gdt_entry_ext gdte_tss = {
         .bottom = {
                 .limit_low = 0, // Set up dynamically
                 .base_low  = 0, // Set up dynamically
@@ -159,40 +160,29 @@ static struct gdt_entry_ext gdte_tss = {
 
 extern void gdt_flush(uint64_t);
 
-static void
-gdt_set_gate(int gate, struct gdt_entry *e)
-{
-        bug_on(gate >= NUM_GDT_ENTRIES, "GDT entry extends beyond table");
-        memcpy(&gdt[gate], e, sizeof(struct gdt_entry));
-}
-
-static void
-gdt_set_gate_ext(int gate, struct gdt_entry_ext *e)
-{
-        bug_on(gate + 1 >= NUM_GDT_ENTRIES, "GDT entry extends beyond table");
-        memcpy(&gdt[gate], e, sizeof(struct gdt_entry_ext));
-}
-
 void
-gdt_install(void)
+gdt_install(cpu_t *cpu)
 {
-        gp.base = (uint64_t)&gdt;
-        gp.limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
+        struct gdt_entry *gdt = &cpu->arch_cpu.gdt[0];
+        struct gdt_ptr *gp = &cpu->arch_cpu.gp;
+        gp->base = (uint64_t)gdt;
+        gp->limit = sizeof(struct gdt_entry) * NUM_GDT_ENTRIES;
 
-        /* Default NULL gate */
-        gdt_set_gate(GDT_NULL_IND, &gdte_null);
+        // Copy the reference entries in.
+        gdt[GDT_NULL_IND] = gdte_null;
+        gdt[GDT_KCODE_IND] = gdte_kcode;
+        gdt[GDT_KDATA_IND] = gdte_kdata;
+        gdt[GDT_UCODE_IND] = gdte_ucode;
+        gdt[GDT_UDATA_IND] = gdte_udata;
+        memcpy(gdt+GDT_TSS_IND, &gdte_tss, sizeof(struct gdt_entry_ext));
 
-        /* Set up a flat memory layout with separate CS/DS sections for
-         * privileged and non-privileged segments. */
-        gdt_set_gate(GDT_KCODE_IND, &gdte_kcode);
-        gdt_set_gate(GDT_KDATA_IND, &gdte_kdata);
-        gdt_set_gate(GDT_UCODE_IND, &gdte_ucode);
-        gdt_set_gate(GDT_UDATA_IND, &gdte_udata);
+        // Set up the TSS entry with the right addresses
+        tss_setup_gdte(&cpu->arch_cpu.tss,
+                       (struct gdt_entry_ext *)(gdt + GDT_TSS_IND));
 
-        tss_setup_gdte(&gdte_tss);
-        gdt_set_gate_ext(GDT_TSS_IND, &gdte_tss);
+        // Write the GDT out
+        gdt_flush((uint64_t)gp);
 
-        gdt_flush((uint64_t)&gp);
-
-        tss_install();
+        // Go set up and write out the TSS, too
+        tss_install(&cpu->arch_cpu.tss);
 }

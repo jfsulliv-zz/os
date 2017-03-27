@@ -37,12 +37,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/string.h>
 #include <stdint.h>
 
-struct tss_entry tss;
-
 void
-tss_setup_gdte(struct gdt_entry_ext *gdte)
+tss_setup_gdte(struct tss_entry *tss, struct gdt_entry_ext *gdte)
 {
-        uint64_t base = (uint64_t)&tss;
+        uint64_t base = (uint64_t)tss;
         uint32_t limit = sizeof(struct tss_entry);
 
         gdte->bottom.limit_low  = (limit & 0xFFFF);
@@ -55,18 +53,12 @@ tss_setup_gdte(struct gdt_entry_ext *gdte)
 extern void tss_flush(int ind);
 
 void
-tss_install(void)
+tss_install(struct tss_entry *tss)
 {
-        memset(&tss, 0, sizeof(struct tss_entry));
+        memset(tss, 0, sizeof(struct tss_entry));
 
-        tss.rsp0 = (uint64_t)irq_stack_top;
-        tss.iomap_base = sizeof(struct tss_entry);
+        tss->rsp0 = (uint64_t)irq_stack_top;
+        tss->iomap_base = sizeof(struct tss_entry);
 
         tss_flush(GDT_TSS_IND);
-}
-
-void
-set_kernel_stack(vaddr_t stack)
-{
-        wrmsrl(MSR_GS_BASE, stack);
 }

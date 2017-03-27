@@ -35,13 +35,11 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <machine/tss.h>
 #include <sys/string.h>
 
-struct tss_entry tss;
-
 void
-tss_setup_gdte(struct gdt_entry *gdte)
+tss_setup_gdte(struct tss_entry *tss, struct gdt_entry *gdte)
 {
-        unsigned long base = (unsigned long)&tss;
-        unsigned long limit = sizeof(struct tss_entry);
+        uint32_t base = (uint32_t)tss;
+        uint32_t limit = sizeof(struct tss_entry);
 
         gdte->limit_low  = (limit & 0xFFFF);
         gdte->base_low   = (base  & 0xFFFFFF);
@@ -53,12 +51,12 @@ tss_setup_gdte(struct gdt_entry *gdte)
 extern void tss_flush(int ind);
 
 void
-tss_install(void)
+tss_install(struct tss_entry *tss)
 {
-        memset(&tss, 0, sizeof(struct tss_entry));
+        memset(tss, 0, sizeof(struct tss_entry));
 
-        tss.ss0 = GDT_KDATA_IND * sizeof(struct gdt_entry);
-        tss.iomap_base = sizeof(struct tss_entry);
+        tss->ss0 = GDT_KDATA_IND * sizeof(struct gdt_entry);
+        tss->iomap_base = sizeof(struct tss_entry);
 
         tss_flush(GDT_TSS_IND);
 }

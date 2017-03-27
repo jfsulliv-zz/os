@@ -1,7 +1,8 @@
 bits 64
 
-%define OFFS_RDI  0    ; UNUSED
-%define OFFS_RSI  0x8  ; UNUSED
+; Consistent with `struct regs' in regs.h
+%define OFFS_RDI  0
+%define OFFS_RSI  0x8
 %define OFFS_RDX  0x10
 %define OFFS_RCX  0x18
 %define OFFS_R8   0x20
@@ -28,78 +29,46 @@ bits 64
 %define OFFS_SS   0xc8 ; UNUSED
 %define REG_SAV_SZ 0xd0
 
-
-; arg0: Register with the address of the block to save the regs to.
-%macro SAVE_REGS 1
-        mov qword [%1 + OFFS_RDX], rdx
-        mov qword [%1 + OFFS_RCX], rcx
-        mov qword [%1 + OFFS_R8], r8
-        mov qword [%1 + OFFS_R9], r9
-        mov qword [%1 + OFFS_RAX], rax
-        mov qword [%1 + OFFS_RBX], rbx
-        mov qword [%1 + OFFS_RBP], rbp
-        mov qword [%1 + OFFS_R10], r10
-        mov qword [%1 + OFFS_R11], r11
-        mov qword [%1 + OFFS_R12], r12
-        mov qword [%1 + OFFS_R13], r13
-        mov qword [%1 + OFFS_R14], r14
-        mov qword [%1 + OFFS_R15], r15
-        mov qword [%1 + OFFS_DS], ds
-        mov qword [%1 + OFFS_ES], es
-        mov qword [%1 + OFFS_FS], fs
-        mov qword [%1 + OFFS_GS], gs
-        mov qword [%1 + OFFS_RSP], rsp
-        pushfq
-        pop qword [%1 + OFFS_FLG]
+; Skips gs and rcx
+%macro SAVE_REGS_TO_RCX 0
+        mov qword [rcx + OFFS_RDI], rdi
+        mov qword [rcx + OFFS_RSI], rsi
+        mov qword [rcx + OFFS_RDX], rdx
+        mov qword [rcx + OFFS_R8], r8
+        mov qword [rcx + OFFS_R9], r9
+        mov qword [rcx + OFFS_RAX], rax
+        mov qword [rcx + OFFS_RBX], rbx
+        mov qword [rcx + OFFS_RBP], rbp
+        mov qword [rcx + OFFS_R10], r10
+        mov qword [rcx + OFFS_R11], r11
+        mov qword [rcx + OFFS_R12], r12
+        mov qword [rcx + OFFS_R13], r13
+        mov qword [rcx + OFFS_R14], r14
+        mov qword [rcx + OFFS_R15], r15
+        mov qword [rcx + OFFS_DS], ds
+        mov qword [rcx + OFFS_ES], es
+        mov qword [rcx + OFFS_FS], fs
+        mov qword [rcx + OFFS_RSP], rsp
 %endmacro
 
-; arg0 : Register which holds the address to load from.
-%macro LOAD_REGS 1
-        mov rdx, qword [%1 + OFFS_RDX]
-        mov rcx, qword [%1 + OFFS_RCX]
-        mov r8, qword [%1 + OFFS_R8]
-        mov r9, qword [%1 + OFFS_R9]
-        mov rax, qword [%1 + OFFS_RAX]
-        mov rbx, qword [%1 + OFFS_RBX]
-        mov rbp, qword [%1 + OFFS_RBP]
-        mov r10, qword [%1 + OFFS_R10]
-        mov r11, qword [%1 + OFFS_R11]
-        mov r12, qword [%1 + OFFS_R12]
-        mov r13, qword [%1 + OFFS_R13]
-        mov r14, qword [%1 + OFFS_R14]
-        mov r15, qword [%1 + OFFS_R15]
-        mov ds, qword [%1 + OFFS_DS]
-        mov es, qword [%1 + OFFS_ES]
-        mov fs, qword [%1 + OFFS_FS]
-        mov gs, qword [%1 + OFFS_GS]
-        mov rsp, qword [%1 + OFFS_RSP]
-        push qword [%1 + OFFS_FLG]
-        popfq
+; Skips gs and rcx
+%macro LOAD_REGS_FROM_RCX 0
+        mov rdi, qword [rcx + OFFS_RDI]
+        mov rsi, qword [rcx + OFFS_RSI]
+        mov rdx, qword [rcx + OFFS_RDX]
+        mov r8, qword [rcx + OFFS_R8]
+        mov r9, qword [rcx + OFFS_R9]
+        mov rax, qword [rcx + OFFS_RAX]
+        mov rbx, qword [rcx + OFFS_RBX]
+        mov rbp, qword [rcx + OFFS_RBP]
+        mov r10, qword [rcx + OFFS_R10]
+        mov r11, qword [rcx + OFFS_R11]
+        mov r12, qword [rcx + OFFS_R12]
+        mov r13, qword [rcx + OFFS_R13]
+        mov r14, qword [rcx + OFFS_R14]
+        mov r15, qword [rcx + OFFS_R15]
+        mov ds, qword [rcx + OFFS_DS]
+        mov es, qword [rcx + OFFS_ES]
+        mov fs, qword [rcx + OFFS_FS]
+        mov rsp, qword [rcx + OFFS_RSP]
 %endmacro
-
-; Swap register contexts.
-; rdi : struct regs *saveregs
-; rsi : struct regs *newregs
-global context_switch
-context_switch:
-        push rbp
-        mov rbp, rsp
-        SAVE_REGS rdi
-        ; Things are kind of weird here. we're technically still the old
-        ; process but our register context is the new one's. Since the
-        ; IP is the same for both, we've functionally performed a full
-        ; switch at this point, and we can consider the old process to
-        ; be 'paused' here.
-        LOAD_REGS rsi
-        pop rbp
-        ret
-
-; Jump to userspace, dropping into ring 3. Does not return!
-; rdi : void *call_addr
-; rsi : void *user_stack_top
-global jump_to_userspace
-jump_to_userspace:
-        mov rcx, rdi
-        mov rsp, rsi
-        xor r11, r11
-        o64 sysret

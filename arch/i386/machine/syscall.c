@@ -29,6 +29,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <machine/gdt.h>
 #include <stdint.h>
 #include <sys/base.h>
 #include <sys/errno.h>
@@ -38,20 +39,21 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/timer.h>
 
 typedef int (*syscall_0_fn)(int *);
-typedef int (*syscall_1_fn)(int *, uint32_t);
-typedef int (*syscall_2_fn)(int *, uint32_t, uint32_t);
-typedef int (*syscall_3_fn)(int *, uint32_t, uint32_t, uint32_t);
-typedef int (*syscall_4_fn)(int *, uint32_t, uint32_t, uint32_t,
-                            uint32_t);
-typedef int (*syscall_5_fn)(int *, uint32_t, uint32_t, uint32_t,
-                            uint32_t, uint32_t);
-typedef int (*syscall_6_fn)(int *, uint32_t, uint32_t, uint32_t,
-                            uint32_t, uint32_t, uint32_t);
+typedef int (*syscall_1_fn)(int *, reg_t);
+typedef int (*syscall_2_fn)(int *, reg_t, reg_t);
+typedef int (*syscall_3_fn)(int *, reg_t, reg_t, reg_t);
+typedef int (*syscall_4_fn)(int *, reg_t, reg_t, reg_t,
+                            reg_t);
+typedef int (*syscall_5_fn)(int *, reg_t, reg_t, reg_t,
+                            reg_t, reg_t);
+typedef int (*syscall_6_fn)(int *, reg_t, reg_t, reg_t,
+                            reg_t, reg_t, reg_t);
 
 // TODO wrap access to user_stack
 static int
-do_syscall(const sysent_t *sysent, const uint32_t args[],
-           const uint32_t *user_stack, int *errno)
+do_syscall(const sysent_t *sysent, reg_t arg0, reg_t arg1, reg_t arg2,
+           reg_t arg3, reg_t arg4, const reg_t *user_stack,
+           int *errno)
 {
         switch(sysent->num_args) {
         case 0:
@@ -59,24 +61,24 @@ do_syscall(const sysent_t *sysent, const uint32_t args[],
                         errno);
         case 1:
                 return ((syscall_1_fn)sysent->fun)(
-                        errno, args[0]);
+                        errno, arg0);
         case 2:
                 return ((syscall_2_fn)sysent->fun)(
-                        errno, args[0], args[1]);
+                        errno, arg0, arg1);
         case 3:
                 return ((syscall_3_fn)sysent->fun)(
-                        errno, args[0], args[1], args[2]);
+                        errno, arg0, arg1, arg2);
         case 4:
                 return ((syscall_4_fn)sysent->fun)(
-                        errno, args[0], args[1], args[2], args[3]);
+                        errno, arg0, arg1, arg2, arg3);
         case 5:
                 return ((syscall_5_fn)sysent->fun)(
-                        errno, args[0], args[1], args[2], args[3],
-                        args[4]);
+                        errno, arg0, arg1, arg2, arg3,
+                        arg4);
         case 6:
                 return ((syscall_6_fn)sysent->fun)(
-                        errno, args[0], args[1], args[2], args[3],
-                        args[4], user_stack[4]);
+                        errno, arg0, arg1, arg2, arg3,
+                        arg4, user_stack[4]);
         default:
                 panic("Invalid number of syscall args for syscall "
                       "%s (was %d)\n", sysent->name, sysent->num_args);
@@ -84,7 +86,10 @@ do_syscall(const sysent_t *sysent, const uint32_t args[],
 }
 
 static int32_t
-syscall_entry(uint32_t *user_stack, int syscall_num, uint32_t args[]);
+syscall_entry(reg_t *user_stack, int syscall_num, reg_t eip,
+              reg_t esp, reg_t ebx, reg_t ecx, reg_t edx,
+              reg_t edi, reg_t esi, reg_t ds, reg_t es, reg_t fs,
+              reg_t gs);
 
 /* Starting point for the sysenter call.
  * The expected layout at this point as follows:
@@ -131,41 +136,84 @@ __attribute__((naked, noreturn)) void
 syscall_entry_stub(void)
 {
        __asm__(
-                "btl $31, %%eax\n" // negative?
-                "jb _badsyscall\n"
-                "cmpl %0, %%eax\n" // exceeds SYS_MAXNR?
-                "jge _badsyscall\n"
+                "pushl %%gs\n"
+                "pushl %%fs\n"
+                "pushl %%es\n"
+                "pushl %%ds\n"
+                "pushl %%eax\n"
+                "mov $0x10, %%eax\n"
+                "mov %%ax, %%fs\n"
+                "mov %%ax, %%ds\n"
+                "mov %%ax, %%es\n"
+                "mov %1, %%eax\n"
+                "mov %%ax, %%gs\n"
+                "popl %%eax\n"
                 "pushl %%esi\n"
                 "pushl %%edi\n"
                 "pushl %%edx\n"
                 "pushl %%ecx\n"
                 "pushl %%ebx\n"
-                "pushl %%esp\n" // args (first 5)
+                "movl 4(%%ebp), %%ebx\n"
+                "pushl %%ebx\n" // esp
+                "movl 8(%%ebp), %%ebx\n"
+                "pushl %%ebx\n" // eip
                 "pushl %%eax\n" // syscall_num
                 "pushl %%ebp\n" // user_stack
-                "call %P1\n"
+                "call %P2\n"
                 "popl %%ebp\n"
-                "addl $28, %%esp\n"
+                "addl $48, %%esp\n"
                 "movl 4(%%ebp), %%edx\n"
-                "movl 8(%%ebp), %%ecx\n"
-                "_exit:\n"
+                "movl 0(%%ebp), %%ecx\n"
                 "sysexit\n"
-                "_badsyscall:\n"
-                "mov %2, %%eax\n"
-                "jmp _exit\n"
                 :
-                : "i" (SYS_MAXNR), "i" (syscall_entry), "i" (ENOSYS)
+                : "i" (SYS_MAXNR), "i" (8 * GDT_PCPU_IND),
+                  "i" (syscall_entry)
                 :);
 }
 
-static int32_t
-syscall_entry(uint32_t *user_stack, int syscall_num, uint32_t args[])
+__attribute__((noreturn)) void
+syscall_child_exit(proc_t *child)
 {
+        reg_t eip = child->state.uregs.eip;
+        reg_t esp = child->state.uregs.esp;
+        __asm__(
+                "movl %0, %%edx\n"
+                "movl %1, %%ecx\n"
+                "sysexit\n"
+                :
+                : "r" (eip), "r" (esp)
+                :);
+        panic("sysexit failed");
+}
+
+static int32_t
+syscall_entry(reg_t *user_stack, int syscall_num, reg_t eip,
+              reg_t esp, reg_t ebx, reg_t ecx, reg_t edx,
+              reg_t edi, reg_t esi, reg_t ds, reg_t es, reg_t fs,
+              reg_t gs)
+{
+        // Record the current register state
+        proc_t *me = proc_current();
+        struct regs *uregs = &me->state.uregs;
+        uregs->eax = syscall_num;
+        uregs->ebx = ebx;
+        uregs->ecx = ecx;
+        uregs->edx = edx;
+        uregs->edi = edi;
+        uregs->esi = esi;
+        uregs->eip = eip;
+        uregs->esp = esp;
+        uregs->ds = ds;
+        uregs->es = es;
+        uregs->fs = fs;
+        uregs->gs = gs;
+
         int retval = -1;
         int errno = ENOSYS;
-        if (syscall_num <= SYS_MAXNR) {
+        if (syscall_num < SYS_MAXNR) {
                 const sysent_t *sysent = &syscalls[syscall_num];
-                retval = do_syscall(sysent, args, user_stack, &errno);
+                retval = do_syscall(sysent, ebx, ecx, edx, edi, esi,
+                                    user_stack, &errno);
         }
         return retval;
 }

@@ -39,7 +39,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 05/16
  */
 
-#include <machine/percpu.h>
+#include <machine/cpu.h>
 #include <machine/regs.h>
 #include <mm/pmm.h>
 #include <mm/vma.h>
@@ -99,8 +99,8 @@ typedef enum {
 
 typedef struct process_state {
         struct regs uregs;              /* Saved user-mode registers */
+        // XXX Add new fields below here only
         struct regs regs;               /* Saved kernel-mode registers */
-        void *kstack;                   /* The kernel stack base */
         sched_state_t sched_state;      /* process execution state */
         sched_context_t sched_context;  /* process execution context */
         vmmap_t vmmap;                  /* Virtual memory map */
@@ -109,7 +109,6 @@ typedef struct process_state {
 #define PROC_STATE_INIT ((proc_state_t) \
 {       .uregs = { 0 },                 \
         .regs = { 0 },                  \
-        .kstack = NULL,                 \
         .sched_state = PROC_STATE_NEW,  \
         .sched_context = PROC_CONTEXT_NONE,  \
 })
@@ -145,8 +144,9 @@ typedef struct process_resources {
  *  3) Process Control data
  * For a single process. */
 typedef struct process {
-        proc_id_t       id;             /* Identification */
         proc_state_t    state;          /* Execution state */
+        // XXX Add new fields below here only
+        proc_id_t       id;             /* Identification */
         proc_control_t  control;        /* Process contol data */
         proc_res_t      resource;       /* Resource counters */
 } proc_t;
@@ -168,10 +168,10 @@ extern proc_t *idle_procp;
 extern proc_t *init_procp;
 
 /* Returns the current process who is executing. */
-#define proc_current()  PERCPU_CURPROC
+#define proc_current()  (cpu_current()->proc)
 
 /* Sets the current process which is executing. */
-void proc_set_current(proc_t *);
+#define proc_set_current(pr) (cpu_current()->proc = (pr))
 
 /* Initialize the proc subsystem. */
 void proc_system_init(void);

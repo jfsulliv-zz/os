@@ -38,5 +38,6 @@ SYSCALL(exit, int status)
 {
         proc_t *me = proc_current();
         sched_atexit(me);
+        // TODO set exit status
 }
 

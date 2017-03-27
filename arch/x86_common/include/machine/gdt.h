@@ -92,7 +92,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 extern struct gdt_entry gdt[NUM_GDT_ENTRIES];
 extern struct gdt_ptr   gp;
 
-void gdt_install();
+struct cpu;
+void gdt_install(struct cpu *);
 
 #endif /* __GDT_H_ */
 
