@@ -45,7 +45,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #if WORD_SIZE == 32
 #include <machine/gdt_i386.h>
 #else
-#include <machine/gdt_i686.h>
+#include <machine/gdt_64.h>
 #endif
 
 #define SEG_DESCTYPE(x)  ((x) << 0x04) // Descriptor type (0 for system, 1 for code/data)

@@ -1,9 +1,12 @@
-LIBGCC=$(shell $(ARCH)-elf-gcc -print-libgcc-file-name)
-LIBGCC_DIR=$(shell dirname $(LIBGCC))
-
-STDINC_DIR=$(LIBGCC_DIR)/include
+BINUTILS=binutils-2.28
+LIBGCC=gcc-6.3.0
+LIBICONV=libiconv-1.14
+VENDOR_DIR=$(shell pwd)/vendor
+VENDOR_OUT=$(shell pwd)/build/$(ARCH)
 
 CC=clang
+STDINC_DIR=$(VENDOR_OUT)/$(LIBGCC)/gcc/include
+$(warning $(STDINC_DIR))
 WARNINGS := -Wall -Wextra -Werror=implicit-function-declaration
 CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
             --target=$(ARCH_TGT) -march=$(MARCH) \
@@ -15,7 +18,8 @@ CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
 ASM     = nasm
 AFLAGS  =-felf$(BITS) $(patsubst %,-i%/,$(INC))
 
-LD=$(ARCH)-elf-ld
+LD=$(VENDOR_OUT)/$(BINUTILS)/bin/$(ARCH)-elf-ld
+LIBGCC_DIR=$(VENDOR_OUT)/$(LIBGCC)/gcc
 LDFLAGS = -melf_$(ARCH_TC) -T arch/$(ARCH)/build/linker.ld \
           -L$(LIBGCC_DIR) -nostdlib -lgcc
 

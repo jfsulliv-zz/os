@@ -1,8 +1,7 @@
 CONFIG_ARCH ?= i386
-
-ifeq ($(CONFIG_ARCH), i686)
+ifeq ($(CONFIG_ARCH), x86_64)
         BITS=64
-        ARCH=i686
+        ARCH=x86_64
         ARCH_TC=x86_64
         ARCH_TGT=x86_64-pc-eabi-elf
         MARCH=x86-64
@@ -48,11 +47,20 @@ endef
 
 $(foreach p,$(MODULES),$(eval $(call OBJDEF,$(p))))
 
-.PHONY: all analyze test img clean clean_cscope dist todolist cscope
+.PHONY: all toolchain analyze test img clean clean_cscope dist todolist cscope
 
 all: $(OUT)-$(VERSION) $(GRUBCFG) 
 	-cp $(OUT)-$(VERSION) $(ISODIR)/boot/$(OUT)
 	grub-mkrescue -o $(ISO) $(ISODIR)
+
+toolchain:
+	scripts/build_toolchain.sh \
+	       -t $(TARGET) \
+	       -p $(VENDOR_OUT) \
+	       -d $(VENDOR_DIR) \
+	       -l $(BINUTILS) \
+	       -c $(LIBGCC) \
+	       -i $(LIBICONV)
 
 # Static analysis checkers.
 CHECKERS=\
@@ -79,8 +87,8 @@ analyze:
 test: CFLAGS += -DRUN_TESTS
 test: all
 
-$(OUT)-$(VERSION): include/version.h kernel/syscall/syscall_table.c \
-        $(ALL_OBJS)
+$(OUT)-$(VERSION): toolchain include/version.h \
+		kernel/syscall/syscall_table.c $(ALL_OBJS)
 	$(LD) $(ALL_OBJS) $(LDFLAGS) -o $(OUT)-$(VERSION)
 
 kernel/syscall/syscall_table.c:

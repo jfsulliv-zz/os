@@ -44,7 +44,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #if WORD_SIZE == 32
 #include <machine/arch_cpu_i386.h>
 #else
-#include <machine/arch_cpu_i686.h>
+#include <machine/arch_cpu_64.h>
 #endif
 
 enum cpuid_requests {

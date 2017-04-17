@@ -44,7 +44,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #if WORD_SIZE == 32
 #include <machine/idt_i386.h>
 #else
-#include <machine/idt_i686.h>
+#include <machine/idt_64.h>
 #endif
 
 #define NUM_IDT_ENTRIES         256

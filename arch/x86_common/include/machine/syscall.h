@@ -34,7 +34,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <sys/proc.h>
 
-/* The entry point for SYSCALL/SYSRETURN (i686) or SYSENTER/SYSEXIT (i386) */
+/* The entry point for SYSCALL/SYSRETURN (x86_64) or SYSENTER/SYSEXIT (i386) */
 extern void syscall_entry_stub(void);
 
 /* The kernel address for a child processes across a fork. Callers
