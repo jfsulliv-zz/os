@@ -26,7 +26,7 @@ VERSION=0.1
 OUT=kernel
 ISO=$(OUT).iso
 
-GRUBCFG  := isodir/boot/grub/grub.cfg
+GRUBCFG  := config/grub.cfg
 ISODIR   := isodir
 
 # We add to these lists as we go.
