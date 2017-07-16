@@ -15,5 +15,5 @@ else
         extra_path=""
 fi
 
-find $DIR/arch/$ARCH $extra_path $DIR/lib $DIR/include $DIR/kernel \
+find $DIR/arch/$ARCH $extra_path $DIR/lib $DIR/include $DIR/kernel $DIR/drivers \
         -type f -name "*.[chsS]" -print
