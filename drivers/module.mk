@@ -1,8 +1,15 @@
 MODULES += $(dir)
 
-sp              := $(sp).x
-dirstack_$(sp)  := $(d)
-d               := $(dir)
+sp := $(sp).x
+dirstack_$(sp) := $(d)
+d  := $(dir)
 
-d               := $(dirstack_$(sp))
-sp              := $(basename $(sp))
+
+dir := $(d)/acpi
+include $(dir)/module.mk
+dir := $(d)/ahci
+include $(dir)/module.mk
+
+
+d := $(dirstack_$(sp))
+sp := $(basename $(sp))
