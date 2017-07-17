@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-csrcs=$(find $DIR/arch/$ARCH $extra_path $DIR/lib $DIR/include \
-        $DIR/kernel $DIR/drivers \
-        -type f -name "*.[chsS]" -print)
+csrcs=$(find arch/$ARCH $extra_path lib include kernel drivers \
+        -type f -name "*.[ch]" -print)
 
 for f in $csrcs; do
         if ! grep -q "Copyright (c)" $f; then
