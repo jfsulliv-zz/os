@@ -77,7 +77,11 @@ mb_load_shstrtab(multiboot_info_t *mbd)
 
         for (; i < mbd->u.elf_sec.num; i++)
         {
-                if (shdrs[i].sh_type == SHT_STRTAB)
+                if (shdrs[i].sh_type == SHT_STRTAB &&
+                                shdrs[i].sh_name < shdrs[i].sh_size &&
+                                !strcmp(".shstrtab",
+                                        (const char *)(KERN_BASE + shdrs[i].sh_addr)
+                                                + shdrs[i].sh_name))
                         break;
         }
         if (i == mbd->u.elf_sec.num) {
