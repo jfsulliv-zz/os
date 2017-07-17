@@ -51,6 +51,7 @@ $(foreach p,$(MODULES),$(eval $(call OBJDEF,$(p))))
 
 all: $(OUT)-$(VERSION) $(GRUBCFG) 
 	-cp $(OUT)-$(VERSION) $(ISODIR)/boot/$(OUT)
+	-cp $(GRUBCFG) $(ISODIR)/boot/grub
 	grub-mkrescue -o $(ISO) $(ISODIR)
 
 toolchain:
@@ -112,7 +113,7 @@ cscope.files: clean_cscope
 	scripts/find_src.sh > $@
 
 cscope: cscope.files
-	cscope -kbq
+	cscope -kbq -i cscope.files
 
 clean_cscope:
 	-$(RM) cscope.out cscope.files
