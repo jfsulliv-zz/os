@@ -95,15 +95,18 @@ typedef struct fat_bios_params {
         uint16_t le_heads_on_media;
         uint32_t le_num_hidden_sectors; // LBA of beginning of partition
         uint32_t le_num_sectors_32; // Unused if num_sectors != 0
-
-        // Cast to one of FatExtendedBootRecord(32) at runtime
-        uint8_t ext[476];
+        union {
+                uint8_t unused[476];
+                FatExtendedBootRecord32 ext;
+        };
 } __attribute__((packed)) FatBiosParams;
 
 /* Instance of a FAT filesystem. */
 typedef struct fat_instance {
         FatType type;
         FatBiosParams bpb;
+        uint8_t *table; // Should be 1 sector
+        unsigned int num_clusters; // Computed at mount-time
 } FatInstance;
 
 #endif

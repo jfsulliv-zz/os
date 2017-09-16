@@ -50,6 +50,8 @@ typedef struct vfs_mount {
         struct list_head mount_list;
         // Filesystem type of the mount point.
         const struct file_system *fs;
+        // Per-FS data.
+        void *fs_specific;
         // Vnode that the mount point was made at.
         vnode_t *covered;
 } mount_t;

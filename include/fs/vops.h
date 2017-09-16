@@ -44,6 +44,9 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <fs/mount.h>
 #include <fs/vnode.h>
 #include <fs/vfile.h>
+#include <sys/types.h>
+
+#include <stddef.h>
 
 // Operations on filesystems (mount points).
 typedef struct vfs_fs_ops {
@@ -57,41 +60,34 @@ typedef struct vfs_fs_ops {
         int (*fs_unmount)(mount_t *);
 } fs_ops_t;
 
-// Operations on vnodes.
+// Operations on vnodes, which represent a single entity in a filesystem.
 typedef struct vfs_vnode_ops {
         // Locates a vnode with the given path (relative to the input
         // vnode). If no file is found, returns a non-zero value.
-        int (*vnode_find)(vnode_t *, const char *, vnode_t **);
-        // Creates a new vnode at the given path (relative to the input
-        // vnode). Returns an non-zero value on error (e.g. invalid
-        // path, or out of space).
-        int (*vnode_create)(vnode_t *, const char *, vnode_t **);
+        int (*vnode_find)(const vnode_t *base, const char *, vnode_t **);
+        // Creates a new file with the given name as a child of 'base'.
+        // Returns an non-zero value on error (e.g. invalid name, or out of
+        // space).
+        int (*vnode_create)(vnode_t *base, const char *);
         // Creates a directory at the given path (relative to the input
         // vnode). Returns a non-zero value on error.
-        int (*vnode_mkdir)(vnode_t *, const char *, vnode_t **);
+        int (*vnode_mkdir)(vnode_t *base, const char *);
         // Removes the directory at the given path (relative to the
         // input vnode). Returns a non-zero value on error.
-        int (*vnode_rmdir)(vnode_t *, const char *, vnode_t **);
+        int (*vnode_rmdir)(vnode_t *base, const char *);
         // TODO mknod
         // Renames the given vnode (rooted at the first vnode) to the
         // provided name. Returns a non-zero value on error.
-        int (*vnode_rename)(vnode_t *, vnode_t *, const char *);
-        // TODO link, unlink, symlink, readlink, followlink
-} vnode_ops_t;
-
-// Operations on vfiles.
-typedef struct vfs_vfile_ops {
-        // Sets the seek position of 'vfile'. Returns the new offset
-        // on success, or a negative value on error.
-        int (*vfile_lseek)(vfile_t *, long, int);
-        // Attempts to read a specified number of bytes from 'vfile'.
+        int (*vnode_rename)(vnode_t *base, vnode_t *, const char *);
+        // Attempts to read a specified number of bytes from 'vnode'.
         // Returns the number of bytes read on success, or a negative
         // value on error.
-        int (*vfile_read)(vfile_t *, void *, size_t);
-        // Attempts to write a specified number of bytes into 'vfile'.
+        ssize_t (*vnode_read)(vnode_t *, off_t offs, char *buf, size_t sz);
+        // Attempts to write a specified number of bytes into 'vnode'.
         // Returns the number of bytes written on success, or a negative
         // value on error.
-        int (*vfile_write)(vfile_t *, void *, size_t);
-} vfile_ops_t;
+        ssize_t (*vnode_write)(vnode_t *, off_t offs, const char *buf, size_t);
+        // TODO link, unlink, symlink, readlink, followlink, stat
+} vnode_ops_t;
 
 #endif

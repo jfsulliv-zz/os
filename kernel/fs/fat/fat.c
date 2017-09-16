@@ -29,14 +29,71 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <fs/fat.h>
 #include <fs/vfs.h>
+#include <fs/vops.h>
+#include <sys/error.h>
 #include <sys/sysinit.h>
 
-static fs_t fatfs;
+#include "fat_dir.h"
+#include "fat_impl.h"
+
+static ssize_t _fat_read(vnode_t *f, off_t offs, char *buf, size_t num) {
+        CHECK_NOTNULL(f, -EINVAL);
+        CHECK_NOTNULL(buf, -EINVAL);
+        const FatInstance *fat = (FatInstance *)(f->mnt->fs_specific);
+        const unsigned int first_cluster = (unsigned int)f->per_fs_data;
+        return fat_read(fat, first_cluster, offs, buf, num);
+}
+
+static ssize_t _fat_write(vnode_t *f, off_t offs, const char *buf, size_t num) {
+        CHECK_NOTNULL(f, -EINVAL);
+        CHECK_NOTNULL(buf, -EINVAL);
+        FatInstance *fat = (FatInstance *)(f->mnt->fs_specific);
+        const unsigned int first_cluster = (unsigned int)f->per_fs_data;
+        return fat_write(fat, first_cluster, offs, buf, num);
+}
+
+
+static int _fat_create(vnode_t *base, const char *name) {
+        CHECK_NOTNULL(base, EINVAL);
+        CHECK_NOTNULL(name, EINVAL);
+        FatInstance *fat = (FatInstance *)(base->mnt->fs_specific);
+        const unsigned int parent_cluster =
+                (const unsigned int)(base->per_fs_data);
+        return fat_create_file(fat, parent_cluster, name);
+}
+
+static int _fat_mkdir(vnode_t *base, const char *name) {
+        CHECK_NOTNULL(base, EINVAL);
+        CHECK_NOTNULL(name, EINVAL);
+        FatInstance *fat = (FatInstance *)(base->mnt->fs_specific);
+        const unsigned int parent_cluster =
+                (const unsigned int)(base->per_fs_data);
+        return fat_create_subdir(fat, parent_cluster, name);
+}
+
+static fs_t fatfs = {
+        .type = FS_TYPE_FAT,
+        .fs_ops  = {
+                .fs_mount = NULL,
+                .fs_start = NULL,
+                .fs_unmount = NULL,
+        },
+        .vnode_ops = {
+                .vnode_find = NULL,
+                .vnode_create = _fat_create,
+                .vnode_mkdir = _fat_mkdir,
+                .vnode_rmdir = NULL,
+                .vnode_rename = NULL,
+                .vnode_read = _fat_read,
+                .vnode_write = _fat_write,
+        },
+};
 static int fat_fs_init(fs_t *);
 REGISTER_FILESYSTEM(fat, &fatfs, FS_TYPE_FAT, fat_fs_init);
 
-static int fat_fs_init(fs_t *fatfs)
+static int fat_fs_init(__attribute__((unused)) fs_t *fatfs)
 {
         return 0;
 }

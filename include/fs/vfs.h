@@ -53,8 +53,6 @@ typedef struct file_system {
         fs_ops_t fs_ops;
         // Vnode related operations (creation, moving, deletion...)
         vnode_ops_t vnode_ops;
-        // Vfile related operations (reading, writing, seeking...)
-        vfile_ops_t vfile_ops;
 } fs_t;
 
 // Global lookup table. Set up during SYSINIT_FS by the various FS

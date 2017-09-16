@@ -38,4 +38,7 @@ typedef uint64_t vaddr_t;
 typedef uint64_t paddr_t;
 typedef uint64_t reg_t;
 
+typedef uint32_t off_t;
+typedef int64_t ssize_t;
+
 #endif

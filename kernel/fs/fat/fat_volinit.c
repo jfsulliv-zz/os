@@ -41,7 +41,7 @@ static uint8_t fat_compute_sectors_per_cluster(FatType type, uint32_t disk_size)
 int fat_setup_bpb(FatBiosParams *bpb, FatType type, uint32_t disk_size,
                   uint32_t sector_sz)
 {
-        CHECK_NONNULL(bpb, EINVAL);
+        CHECK_NOTNULL(bpb, EINVAL);
         CHECK(type != FAT_TYPE_12, EINVAL, "Only FAT16/FAT32 supported.\n");
         CHECK(type == FAT_TYPE_16 || type == FAT_TYPE_32, EINVAL,
                 "Invalid fat type %d\n", type);
@@ -78,9 +78,7 @@ int fat_setup_bpb(FatBiosParams *bpb, FatType type, uint32_t disk_size,
                 bpb->le_sectors_per_fat_16 = (uint16_t)fat_size;
         } else {
                 bpb->le_sectors_per_fat_16 = 0;
-                FatExtendedBootRecord32 *ext =
-                        (FatExtendedBootRecord32 *)bpb->ext;
-                ext->le_sectors_per_fat = fat_size;
+                bpb->ext.le_sectors_per_fat = fat_size;
         }
         return 0;
 }

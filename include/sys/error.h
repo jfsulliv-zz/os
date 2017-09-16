@@ -46,9 +46,15 @@ THE POSSIBILITY OF SUCH DAMAGE.
  * 07/17
  */
 
+#include <sys/debug.h>
+#include <sys/errno.h>
 #include <sys/kprintf.h>
 
 #include <stddef.h>
+
+#define CHECK_ZERO(err) {\
+        if ((err) != 0) return (err); \
+}
 
 /* Returns 'ret' if 'cond' is true. */
 #define CHECK(cond, ret, msg, ...) {\
@@ -67,7 +73,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 /* Returns if 'cond' is true. */
 #define CHECKV(cond, msg, ...) {\
-        if (cond) { \
+if (cond) { \
                 ERRORV((msg), ##__VA_ARGS__); \
         } \
 }
@@ -81,16 +87,21 @@ THE POSSIBILITY OF SUCH DAMAGE.
 }
 
 /* Returns 'ret' if 'ptr' is null. */
-#define CHECK_NONNULL(ptr, ret) \
+#define CHECK_NOTNULL(ptr, ret) \
         CHECK((ptr) != NULL, ret, "Unexpected null: %s", #ptr)
 
+/* Returns 'ret' if 'ptr' is null, setting 'err'to 'errval' */
+#define CHECKE_NOTNULL(ptr, ret, errno, errno_val) \
+        CHECKE((ptr) != NULL, (ret), (errno), (errno_val), \
+               "Unexpected null: %s", #ptr)
+
 /* Returns if 'ptr' is null. */
-#define CHECKV_NONNULL(ptr) \
+#define CHECKV_NOTNULL(ptr) \
         CHECKV((ptr) != NULL, "Unexpected null: %s", #ptr)
 
 /* Returns if 'ptr' is null, setting 'err' to 'errval'. */
-#define CHECKVE_NONNULL(ptr, ret, errno, errno_val) \
-        CHECKVE((ptr) != NULL, ret, errno, errno_val, \
+#define CHECKVE_NOTNULL(ptr, errno, errno_val) \
+        CHECKVE((ptr) != NULL, (errno), (errno_val), \
                 "Unexpected null: %s", #ptr)
 
 /* Returns 'ret', displaying an error message. */
