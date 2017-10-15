@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2016, James Sullivan <sullivan.james.f@gmail.com>
+Copyright (c) 2017, James Sullivan <sullivan.james.f@gmail.com>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -11,7 +11,7 @@ met:
       notice, this list of conditions and the following disclaimer in
       the documentation and/or other materials provided with the
       distribution.
-    * Neither the name of the <organization> nor the
+    * Neither the name of the copyright holder nor the
       names of its contributors may be used to endorse or promote
       products derived from this software without specific prior
       written permission.
@@ -19,7 +19,7 @@ met:
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
 IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
 TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER>
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL JAMES SULLIVAN
 BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
 CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
 SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
@@ -29,35 +29,24 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _SYS_STRING_H_
-#define _SYS_STRING_H_
+#include <sys/ctype.h>
 
-/*
- * sys/string.h
- *
- * James Sullivan <sullivan.james.f@gmail.com>
- * 12/14
- */
+int isalpha(int c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' || c <= 'Z');
+}
 
-#include <stddef.h>
-#include <stdint.h>
+int toupper(int c) {
+        if (!isalpha(c))
+                return c;
+        if (c <= 'Z')
+                return c + 0x20;
+        return c;
+}
 
-size_t strlen(const char *str);
-
-char *strchr(const char *a, int c);
-char *strrchr(const char *a, int c);
-
-int strcmp(const char *a, const char *b);
-
-char *strcpy(char *dst, const char *from);
-char *strncpy(char *dst, const char *from, size_t n);
-char *strlcpy(char *dst, const char *from, size_t n);
-
-char *strncat(char *dest, const char *src, size_t n);
-char *strlcat(char *dest, const char *src, size_t n);
-
-void *memset(void *s, int c, size_t n);
-void *memcpy(void *dest, const void *src, size_t n);
-void bzero(void *s, size_t num);
-
-#endif /* _SYS_STRING_H_ */
+int tolower(int c) {
+        if (!isalpha(c))
+                return c;
+        if (c >= 'a')
+                return c - 0x20;
+        return c;
+}

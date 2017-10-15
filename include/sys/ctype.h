@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2016, James Sullivan <sullivan.james.f@gmail.com>
+Copyright (c) 2017, James Sullivan <sullivan.james.f@gmail.com>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -29,35 +29,23 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _SYS_STRING_H_
-#define _SYS_STRING_H_
+#ifndef _SYS_CTYPE_H_
+#define _SYS_CTYPE_H_
 
 /*
- * sys/string.h
+ * include/sys/ctype.h - Character handling
  *
  * James Sullivan <sullivan.james.f@gmail.com>
- * 12/14
+ * 10/17
  */
 
-#include <stddef.h>
-#include <stdint.h>
+// Returns 1 if 'c' is [a-zA-Z] or 0 otherwise.
+int isalpha(int c);
 
-size_t strlen(const char *str);
+// Converts 'c' to uppercase, or returns 'c' if no uppercase exists for 'c'.
+int toupper(int c);
 
-char *strchr(const char *a, int c);
-char *strrchr(const char *a, int c);
+// Converts 'c' to lowercase, or returns 'c' if no lowercase exists for 'c'.
+int tolower(int c);
 
-int strcmp(const char *a, const char *b);
-
-char *strcpy(char *dst, const char *from);
-char *strncpy(char *dst, const char *from, size_t n);
-char *strlcpy(char *dst, const char *from, size_t n);
-
-char *strncat(char *dest, const char *src, size_t n);
-char *strlcat(char *dest, const char *src, size_t n);
-
-void *memset(void *s, int c, size_t n);
-void *memcpy(void *dest, const void *src, size_t n);
-void bzero(void *s, size_t num);
-
-#endif /* _SYS_STRING_H_ */
+#endif /* _SYS_CTYPE_H_ */

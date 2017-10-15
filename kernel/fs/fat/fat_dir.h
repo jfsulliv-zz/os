@@ -76,6 +76,13 @@ struct fat_instance;
 // Indicates that a long_dir piece is the last piece in a chain.
 #define FAT_DIR_LAST_LONG_ENTRY 0x40
 
+// The largest names supported by each FAT dir type.
+#define FAT_MAX_SHORT_NAME 11
+
+// 0x40 is the end marker
+#define FAT_MAX_LONG_DIR_CHAIN (0x3F)
+#define FAT_MAX_LONG_NAME (FAT_MAX_LONG_DIR_CHAIN * 26)
+
 // Date format: dates are relative to the MS-DOS epoch (01/01/1980).
 //      Bits 0-4: Day of month (1-31)
 //      Bits 5-8: Month of year (1 = January, 12 = December)
@@ -104,7 +111,7 @@ typedef struct fat_dir_entry {
                 // e.g. 'foo.bar'      -> 'FOO     BAR'
                 //      'a'            -> 'A          '
                 //      'prettybg.big' -> 'PRETTYBGBIG'
-                uint8_t name[11];
+                char name[11];
                 // FAT_DIR_ATTR_*
                 uint8_t attr;
                 uint8_t reserved; // Set to 0
@@ -123,13 +130,13 @@ typedef struct fat_dir_entry {
                 // Order of this entry in a sequence of long_dir entries.
                 // If masked with 0x40, this is the last entry.
                 uint8_t ord;
-                uint8_t name1[10]; // Characters 1-5
+                char name1[10]; // Characters 1-5
                 uint8_t attr; // Must be FAT_DIR_ATTRS_LONG_NAME
                 uint8_t type; // If zero, a sub-component of a longdir
                 uint8_t checksum; // checksum of the short dir_entry name
-                uint8_t name2[12]; // Characters 6-11
+                char name2[12]; // Characters 6-11
                 uint16_t always_0;
-                uint8_t name3[4]; // Characters 12-13
+                char name3[4]; // Characters 12-13
         } long_dir __attribute__((packed));
         };
 } __attribute__((packed)) FatDirEntry;
@@ -155,7 +162,7 @@ int fat_create_subdir(struct fat_instance *fat,
  * 'target' is also removed.
  * Returns non-zero on failure. */
 int fat_remove_dirent(struct fat_instance *fat, unsigned int parent,
-                      int target);
+                      unsigned int target);
 
 // Computes the checksum field of long_dir.
 static inline uint8_t fat_longdir_checksum(FatDirEntry *shortDirEntry)

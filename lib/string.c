@@ -47,6 +47,32 @@ size_t strlen(const char *str)
 	return (p - 1) - str;
 }
 
+char *strchr(const char *a, int c)
+{
+        char *p = (char *)a;
+        while (*p) {
+                if (*p == (char)c) {
+                        return p;
+                }
+                p++;
+        }
+        return NULL;
+}
+
+char *strrchr(const char *a, int c)
+{
+        size_t len = strlen(a);
+        if (len == 0) return NULL;
+        char *p = (char *)(a + (len - 1));
+        while (p >= a) {
+                if (*p == (char)c) {
+                        return p;
+                }
+                p--;
+        }
+        return NULL;
+}
+
 int strcmp(const char *a, const char *b)
 {
         while (*a && *b)
