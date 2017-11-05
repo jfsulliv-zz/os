@@ -20,7 +20,7 @@ AFLAGS  =-felf$(BITS) $(patsubst %,-i%/,$(INC))
 
 LD=$(VENDOR_OUT)/$(BINUTILS)/bin/$(ARCH)-elf-ld
 LIBGCC_DIR=$(VENDOR_OUT)/$(LIBGCC)/gcc
-LDFLAGS = -melf_$(ARCH_TC) -T arch/$(ARCH)/build/linker.ld \
+LDFLAGS = -melf_$(ARCH_TC) -T arch/$(ARCH)/config/linker.ld \
           -L$(LIBGCC_DIR) -nostdlib -lgcc
 
 dir := arch/$(ARCH)
