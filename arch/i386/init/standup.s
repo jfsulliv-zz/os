@@ -7,24 +7,19 @@ extern kernel_end
 %define RELOC(x)        ((x)-(KERN_BASE))
 %define SIZE_IN_PAGES(x) ((x) >> (12))
 
-; Declare constants used for creating a multiboot header.
-MBALIGN     equ  1<<0                   ; align loaded modules on page boundaries
-MEMINFO     equ  1<<1                   ; provide memory map
-FLAGS       equ  MBALIGN | MEMINFO      ; this is the Multiboot 'flag' field
-MAGIC       equ  0x1BADB002             ; 'magic number' lets bootloader find the header
-CHECKSUM    equ -(MAGIC + FLAGS)        ; checksum of above, to prove we are multiboot
+; Constants associated with the multiboot spec.
+MB_MBALIGN     equ  1<<0    ; align loaded modules on page boundaries
+MB_MEMINFO     equ  1<<1    ; provide memory map
+MB_FLAGS       equ  MB_MBALIGN | MB_MEMINFO    ; this is the Multiboot 'flag' field
+MB_MAGIC       equ  0x1BADB002    ; 'magic number' lets bootloader find the header
+MB_CHECKSUM    equ -(MB_MAGIC + MB_FLAGS)    ; checksum of above, to prove we are multiboot
  
-; Declare a header as in the Multiboot Standard. We put this into a
-; special section so we can force the header to be in the start of the
-; final program.  You don't need to understand all these details as it
-; is just magic values that is documented in the multiboot standard. The
-; bootloader will search for this magic sequence and recognize us as a
-; multiboot kernel.
 section .multiboot
 align 4
-        dd MAGIC
-        dd FLAGS
-        dd CHECKSUM
+        dd MB_MAGIC
+        dd MB_FLAGS
+        dd MB_CHECKSUM
+
 ; The kernel address space corresponds roughly to its ELF layout.
 ;
 ; text | data | bss [stack] | [tables]

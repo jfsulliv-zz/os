@@ -23,24 +23,18 @@ extern init_pte_end
 %define RELOC(x)        ((x)-(LOAD_OFFS))
 %define KRELOC(x)       ((x)-(KERN_BASE))
 
-; Declare constants used for creating a multiboot header.
-MBALIGN     equ  1<<0                   ; align loaded modules on page boundaries
-MEMINFO     equ  1<<1                   ; provide memory map
-FLAGS       equ  MBALIGN | MEMINFO      ; this is the Multiboot 'flag' field
-MAGIC       equ  0x1BADB002             ; 'magic number' lets bootloader find the header
-CHECKSUM    equ -(MAGIC + FLAGS)        ; checksum of above, to prove we are multiboot
+; Constants associated with the multiboot spec.
+MB_MBALIGN     equ  1<<0    ; align loaded modules on page boundaries
+MB_MEMINFO     equ  1<<1    ; provide memory map
+MB_FLAGS       equ  MB_MBALIGN | MB_MEMINFO    ; this is the Multiboot 'flag' field
+MB_MAGIC       equ  0x1BADB002    ; 'magic number' lets bootloader find the header
+MB_CHECKSUM    equ -(MB_MAGIC + MB_FLAGS)    ; checksum of above, to prove we are multiboot
  
-; Declare a header as in the Multiboot Standard. We put this into a
-; special section so we can force the header to be in the start of the
-; final program.  You don't need to understand all these details as it
-; is just magic values that is documented in the multiboot standard. The
-; bootloader will search for this magic sequence and recognize us as a
-; multiboot kernel.
 section .multiboot
 align 4
-        dd MAGIC
-        dd FLAGS
-        dd CHECKSUM
+        dd MB_MAGIC
+        dd MB_FLAGS
+        dd MB_CHECKSUM
 
 ; The kernel address space corresponds roughly to its ELF layout.
 ;
@@ -51,11 +45,15 @@ section .text
 ;;;;;;;;;;;;;;;;;;;;;;
 ;;; Set up paging. ;;;
 ;;;;;;;;;;;;;;;;;;;;;;
+; [ebp+8]: Highest physical address to map.
 init_tables:
+        push ebp
+        mov ebp, esp
+        push edi
         ; Initialize the page tables to be identity mapped
-        ; [0x0 .. KERN_SZ]        => 0x0 (For this code)
-        ; [0x80000000 .. KERN_SZ] => 0x0 (For the GDT)
-        ; [KERN_BASE .. KERN_SZ]  => 0x0 (For the actual mapping)
+        ; [0x0 .. rdi]                           => 0x0 (For this code)
+        ; [0x80000000 .. 0x80000000 + rdi]       => 0x0 (For the GDT)
+        ; [kernel_start .. kernel_start + rdi]   => 0x0 (For the actual mapping)
 
         ; PGD setup
         mov edi, KRELOC(init_pgd)
@@ -89,7 +87,7 @@ init_tables:
 
         ; PTE setup
         mov edi, KRELOC(init_pte)
-        mov edx, KRELOC(kernel_end)
+        mov edx, [ebp+0x8]
         mov eax, 0x3
         mov ecx, 0x0
 .2:     stosd
@@ -97,20 +95,24 @@ init_tables:
         add eax, 0x1000
         sub edx, 0x1000
         jns .2
+        pop edi
+        pop ebp
         ret
 
+; Returns non-zero if CPUID is available.
 check_cpuid:
-        pushfd                               ;
-        pushfd                               ;
-        xor dword [esp],0x00200000           ;
-        popfd                                ;
-        pushfd                               ;
-        pop eax                              ;
-        xor eax,[esp]                        ;
-        popfd                                ;
-        and eax,0x00200000                   ;
+        pushfd
+        pushfd
+        xor dword [esp],0x00200000
+        popfd
+        pushfd
+        pop eax
+        xor eax,[esp]
+        popfd
+        and eax,0x00200000
         ret
 
+; Returns non-zero if the CPU features we rely on are supported.
 check_features:
         ; First make sure we have extended CPUID features
         mov eax, 0x80000000
@@ -134,6 +136,60 @@ check_features:
         mov eax, 0
         ret
 
+; Returns the highest physical address at which data is stored (either by the
+; kernel or by Multiboot).
+; [ebp+8]: Physical address of the Multiboot header
+get_phys_top:
+        push ebp
+        mov ebp, esp
+        push edi
+        push esi
+        push ebx
+        ; Start with the kernel's data
+        mov eax, KRELOC(kernel_end)
+        mov edi, [ebp+8]
+        mov edx, edi
+        add edx, 116
+        ; Add in the multiboot info header
+        cmp edx, eax
+        cmovg eax, edx
+        ; Check to see if we also need to account for ELF data
+        mov edx, [edi]
+        bt edx, 5
+        jb .preserve_elf_data
+        jmp .out
+.preserve_elf_data:
+        ; Add in the shtab itself
+        mov edx, [edi+36] ; shtab addr
+        add edx, [edi+32] ; shtab size
+        cmp edx, eax
+        cmovg eax, edx
+        ; Scan for strtabs sections and include them, too
+        mov ecx, [edi+28] ; shtab num
+        mov edi, [edi+36]
+.loop:
+        cmp ecx, 0
+        jz .out
+        sub ecx, 1
+        mov edx, ecx
+        sal edx, 0x6
+        add edx, edi ; &shdrs[i]
+        ; Skip non-strtab entries
+        mov esi, [edx+0x4] ; sh_type
+        cmp esi, 0x3 ; SH_STRTAB
+        jne .loop
+        mov esi, [edx+0x18] ; sh_offset
+        add esi, [edx+0x20] ; sh_size
+        cmp esi, eax
+        cmovg eax, esi
+        jmp .loop
+.out:
+        pop ebx
+        pop esi
+        pop edi
+        pop ebp
+        ret
+
 global _start
 _start:
         cli
@@ -152,7 +208,13 @@ _start:
         cmp eax, 0
         je .fail
 
+        ; Initialize the memory map of the system.
+        mov ebx, [KRELOC(mbhp)]
+        push ebx
+        call get_phys_top
+        mov [esp], eax
         call init_tables
+        add esp, 4
 
         ; Enable PAE
         mov ecx, cr4
