@@ -160,8 +160,9 @@ get_phys_top:
         jmp .out
 .preserve_elf_data:
         ; Add in the shtab itself
-        mov edx, [edi+36] ; shtab addr
-        add edx, [edi+32] ; shtab size
+        mov edx, [edi+28] ; shtab num
+        sal edx, 6
+        add edx, [edi+36] ; shtab addr
         cmp edx, eax
         cmovg eax, edx
         ; Scan for strtabs sections and include them, too
