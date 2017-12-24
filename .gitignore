@@ -7,7 +7,5 @@ cscope.out
 include/version.h
 include/sys/syscalls.h
 kernel/syscall/syscall_table.c
-vendor/binutils-2.28/
-vendor/gcc-6.3.0/
-vendor/libiconv-1.14/
+vendor/*/
 build/

@@ -1,5 +1,5 @@
 BINUTILS=binutils-2.28
-LIBGCC=gcc-6.3.0
+LIBGCC=gcc-6.4.0
 LIBICONV=libiconv-1.14
 VENDOR_DIR=$(shell pwd)/vendor
 VENDOR_OUT=$(shell pwd)/build/$(ARCH)

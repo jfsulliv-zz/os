@@ -49,9 +49,12 @@ $(foreach p,$(MODULES),$(eval $(call OBJDEF,$(p))))
 
 .PHONY: all toolchain analyze test img clean clean_cscope dist todolist cscope
 
-all: $(OUT)-$(VERSION) $(GRUBCFG) 
+all: $(ISO)
+
+$(ISO): $(OUT)-$(VERSION) $(GRUBCFG)
+	-mkdir -p $(ISODIR)/boot/grub
 	-cp $(OUT)-$(VERSION) $(ISODIR)/boot/$(OUT)
-	-cp $(GRUBCFG) $(ISODIR)/boot/grub
+	-cp $(GRUBCFG) $(ISODIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) $(ISODIR)
 
 toolchain:
@@ -123,4 +126,6 @@ clean: clean_cscope
                include/sys/syscalls.h
 	-$(RM) $(wildcard $(ALL_OBJS) $(PRE_OBJS))
 	-$(RM) $(wildcard $(ISO) $(OUT)-$(VERSION) \
-               $(OUT)-$(VERSION)$(OUT).tgz $(ISODIR)/boot/$(OUT))
+               $(OUT)-$(VERSION)$(OUT).tgz)
+	-$(RM) -r $(ISODIR)
+

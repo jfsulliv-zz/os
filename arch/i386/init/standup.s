@@ -34,14 +34,10 @@ _start:
         ; Initialize the page tables to be identity mapped
         mov edi, RELOC(pg0)
         mov eax, 0x7 ; Present, RW, user
-        add eax, 0x000000
-        mov ecx, 0x0
-        mov edx, RELOC(kernel_end)
 .2:     stosd
         add eax, 0x1000
-        cmp edi, RELOC(pg1_end)
-        sub edx, 0x1000
-        jns  $-0x12
+        cmp edi, RELOC(pg0_end)
+        jl .2
 
         ; Set the page directory pointer
         mov ecx, RELOC(init_pgd)
@@ -60,7 +56,10 @@ _start:
 _start_hh:
         ;;; First of all, we don't need the ID map any more, so
         ;;; let's get rid of it. 
-        mov dword [RELOC(init_pgd)],   0x0
+        mov ecx, 2
+        mov edi, RELOC(init_pgd)
+        xor eax, eax
+        rep stosd
         invlpg [0x0]
         ;;; Bootstrap the stack.
         mov esp, STACK_TOP
@@ -106,27 +105,22 @@ tss_flush:
 section .tables
 align 0x1000
 global init_pgd
-global pg0
 init_pgd:
         ; The first 8MB will be ID mapped.
-        dd 0x00102007
-        dd 0x00103007
+        dd (RELOC(pg0) + 0x0007)
+        dd (RELOC(pg0) + 0x1007)
         times (UNUM_PAGETABS-2) dd 0x0
         ; Duplicate the kern map at the start of the kernel address space
-        dd 0x00102007
-        dd 0x00103007
+        dd (RELOC(pg0) + 0x0007)
+        dd (RELOC(pg0) + 0x1007)
         times (KNUM_PAGETABS-2) dd 0x0
 init_pgd_end:
+
+global pg0
 ; These will be dynamically filled for the identity mapping
 pg0:
-        times 4096 db 0x0
+        times (2 * 4096) db 0x0
 pg0_end:
-pg1:
-        times 4096 db 0x0
-pg1_end:
-; We will use this for the boot parameters and kernel command line.
-empty_zero_page:
-        times 4096 db 0x0
 
 section .bss
 align 32

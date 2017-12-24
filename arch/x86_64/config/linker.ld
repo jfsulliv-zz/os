@@ -1,28 +1,24 @@
 OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(_start)
 KERNEL_MAP = 0xffffffff80000000;
-KERNEL_LMA =           0x100000;
-KERNEL_VMA = KERNEL_MAP + KERNEL_LMA;
+KERNEL_VMA = KERNEL_MAP;
 
 SECTIONS
 { 
-  . = 0x1000;
-  .multiboot ALIGN (16) :
-  {
+  . = (2M) + SIZEOF_HEADERS;
+
+  .multiboot . : {
       *bootstrap.o(.multiboot)
   }
 
-  . += KERNEL_LMA;
-
-  .bootstrap : AT(ADDR(.bootstrap) - KERNEL_LMA)
-  {
+  .bootstrap : {
       *bootstrap.o(.text)
   }
 
-  . += KERNEL_MAP;
-  kernel_start = .;
+  . += (KERNEL_MAP);
+  kernel_start = KERNEL_MAP;
 
-  .text ALIGN (4096) : AT(ADDR(.text) - KERNEL_MAP) {
+  .text ALIGN(4096) : AT(ADDR(.text) - KERNEL_MAP) {
       *(EXCLUDE_FILE(*bootstrap.o) .text)
   }
 
