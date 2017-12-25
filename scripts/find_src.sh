@@ -9,7 +9,7 @@ ARCH=$CONFIG_ARCH
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
-if [ "$ARCH" = "i386" ] || [ "$ARCH" = "i686" ]; then
+if [ "$ARCH" = "i386" ] || [ "$ARCH" = "x86_64" ]; then
         extra_path="$DIR/arch/x86_common*"
 else
         extra_path=""

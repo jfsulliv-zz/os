@@ -6,7 +6,6 @@ VENDOR_OUT=$(shell pwd)/build/$(ARCH)
 
 CC=clang
 STDINC_DIR=$(VENDOR_OUT)/$(LIBGCC)/gcc/include
-$(warning $(STDINC_DIR))
 WARNINGS := -Wall -Wextra -Werror=implicit-function-declaration
 CFLAGS	  = -m$(BITS) -ggdb -std=c99 $(WARNINGS) -ffreestanding \
             --target=$(ARCH_TGT) -march=$(MARCH) \

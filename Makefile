@@ -119,7 +119,7 @@ cscope: cscope.files
 	cscope -kbq -i cscope.files
 
 clean_cscope:
-	-$(RM) cscope.out cscope.files
+	-$(RM) cscope.in.out cscope.po.out cscope.out cscope.files
 
 clean: clean_cscope
 	-$(RM) include/version.h kernel/syscall/syscall_table.c \
