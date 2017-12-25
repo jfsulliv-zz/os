@@ -43,7 +43,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #define STACK_SZ 65536
 
-#define KERN_OFFS 0x00100000ULL
+#define KERN_OFFS           0x200000ULL
 #define KERN_BASE 0xffffffff80000000ULL
 #define KERN_TOP  0xffffffffffffffffULL
 #define KERN_SZ   (KERN_TOP - KERN_BASE)
